@@ -503,7 +503,12 @@ IF (WITH_XIOS)
   MESSAGE(STATUS "------------------------------------------------")
 ENDIF()
 
+# YAC
 IF (WITH_YAC)
+  IF(NOT WITH_MPI)
+    MESSAGE(FATAL_ERROR "Building with YAC requires MPI.")
+  ENDIF()
+
   MESSAGE(STATUS "------------------------------------------------")
   MESSAGE(STATUS "  Looking for YAC ")
 
