@@ -63,12 +63,9 @@ MODULE SParIterComm
   USE elmer_coupling, ONLY: coupling_init, coupling_finalize, coupling_setup, &
                     mpi_handshake, MAX_GROUPNAME_LEN
   USE elmer_icon_coupling
-#elif defined(ELMER_HAVE_MPI_MODULE)
+#else
   ! If YAC is not used, use the mpi_handshake from mo_mpi_handshake.F90
   USE mo_mpi_handshake, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
-#else
-  ! If no MPI is present use a stub
-  USE mo_mpi_handshake_stub, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
 #endif
 
   IMPLICIT NONE
