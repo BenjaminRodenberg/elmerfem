@@ -32,6 +32,7 @@ SET(solverlib_SOURCES AddrFunc.F90 NavierStokes.F90 NavierStokesGeneral.F90
   MainUtils.F90 Adaptive.F90 EigenSolve.F90 HashTable.F90
   MeshUtils.F90 SaveUtils.F90 SParIterGlobals.F90 SParIterComm.F90
   SParIterPrecond.F90 SParIterSolver.F90 Messages.F90 Multigrid.F90
+  mo_mpi_handshake.F90 mpi_handshake.c
   Smoothers.F90 ClusteringMethods.F90 ParallelUtils.F90
   ParallelEigenSolve.F90 solve_cmplx.F90 solve_real.F90 MGPrec.F90
   DefUtils.F90 MeshPartition.F90 MeshRemeshing.F90 CutFEMUtils.F90
@@ -47,12 +48,6 @@ SET(solverlib_SOURCES AddrFunc.F90 NavierStokes.F90 NavierStokesGeneral.F90
 
 #SET_PROPERTY(SOURCE MaxwellAxiS.F90 PROPERTY
 #	COMPILE_DEFINITIONS FULL_INDUCTION)
-
-IF(MPI_Fortran_HAVE_F90_MODULE)
-  LIST(APPEND solverlib_SOURCES mo_mpi_handshake.F90 mpi_handshake.c)
-ELSE()
-  LIST(APPEND solverlib_SOURCES mo_mpi_handshake_stub.F90)
-ENDIF()
 
 IF(WITH_YAC)
   LIST(APPEND solverlib_SOURCES elmer_grid.c elmer_coupling.F90)

@@ -36,6 +36,8 @@
 #include <limits.h>
 #include <stdint.h>
 #include <string.h>
+
+#ifdef HAVE_MPI
 #include <mpi.h>
 
 //taken from http://beige.ucs.indiana.edu/I590/node85.html
@@ -170,3 +172,14 @@ void mpi_handshake_c2f(int n, char const ** group_names,
 }
 
 void mpi_handshake_dummy(MPI_Comm comm) {mpi_handshake(NULL, NULL, 0, comm);}
+
+#else //HAVE_MPI
+
+void mpi_handshake_c2f(int n, char const ** group_names,
+                       int * group_comms, int comm)
+{
+  (void)n; (void)group_names; (void)group_comms; (void)comm;
+  fprintf(stderr, "ERROR(mpi_handshake): MPI is not available.\n");
+  exit(EXIT_FAILURE);
+}
+#endif //HAVE_MPI
