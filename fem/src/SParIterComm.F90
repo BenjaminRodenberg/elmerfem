@@ -241,7 +241,7 @@ CONTAINS
 
 ! This is a dirty fix for Windows compiler (msys2+gfortran+MSMPI) where this
 ! caused problems. However, likelihood of this having to be used under
-! Windows is close to zero. 
+! Windows is close to zero.
 #ifndef WIN32
     CALL MPI_INITIALIZED(ParEnv % ExternalInit, ierr)
     IF ( ierr /= 0 ) RETURN
@@ -283,12 +283,12 @@ GROUP_NAMES(ELMER_GROUP_IDX) = TRIM(ExecID)
     INQUIRE(FILE="coupling.yaml", EXIST=USE_YAC)
     ! add YAC group for comm splitting
     IF (USE_YAC) THEN
-      ! Query mpi_handshake group label from coupler
-      CALL coupler_get_code_id(COUPLER_LABEL)
-      ! Add Group for coupler
-      NUM_GROUPS = NUM_GROUPS + 1
-      COUPLER_GROUP_IDX = NUM_GROUPS
-      GROUP_NAMES(COUPLER_GROUP_IDX) = COUPLER_LABEL
+        ! Query mpi_handshake group label from coupler
+        CALL coupler_get_code_id(COUPLER_LABEL)
+        ! Add Group for coupler
+        NUM_GROUPS = NUM_GROUPS + 1
+        COUPLER_GROUP_IDX = NUM_GROUPS
+        GROUP_NAMES(COUPLER_GROUP_IDX) = COUPLER_LABEL
     ENDIF
 #endif
 
@@ -297,50 +297,39 @@ IF (NUM_GROUPS > MAX_NUM_GROUPS) THEN
     CALL Fatal( 'ParCommInit', Message )
 ENDIF
 
-! Do comm splitting using handshake
-CALL mpi_handshake(MPI_COMM_WORLD, GROUP_NAMES(1:NUM_GROUPS), GROUP_COMMS(1:NUM_GROUPS))
+IF (USE_XIOS .OR. USE_YAC) THEN
+    CALL mpi_handshake(MPI_COMM_WORLD, GROUP_NAMES(1:NUM_GROUPS),&
+    GROUP_COMMS(1:NUM_GROUPS))
+ELSE
+! The colour could be set to be some different if we want to couple ElmerSolver with some other
+! software having MPI colour set to zero.
+#ifndef ELMER_COLOUR
+#define ELMER_COLOUR 0
+#endif
+    CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,ELMER_COLOUR,&
+    ParEnv % MyPE,ELMER_COMM_WORLD,ierr)
+ENDIF
 
 ELMER_COMM_WORLD = GROUP_COMMS(ELMER_GROUP_IDX)  ! Set ELMER_COMM_WORLD determined through mpi_handshake
 
 ! Use XIOS library for IO
 ! Must have xios and iodef.xml present
 #ifdef HAVE_XIOS
-    INQUIRE(FILE="iodef.xml", EXIST=USE_XIOS)
     IF (USE_XIOS) THEN
-      WRITE(Message,*) "Using XIOS with config-file: iodef.xml"
-      CALL INFO("SparIterComm",Message,Level=25)
-      CALL SetExecID()
-      CALL xios_initialize(TRIM(ExecID), global_comm=GROUP_COMMS(XIOS_GROUP_IDX))
-    ELSE
-#ifndef ELMER_COLOUR
-#define ELMER_COLOUR 0
-#endif
-  ! TODO potential incompatibility with MPI_Handshake
-      CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,ELMER_COLOUR,&
-           ParEnv % MyPE,ELMER_COMM_WORLD,ierr) 
+        WRITE(Message,*) "Using XIOS with config-file: iodef.xml"
+        CALL INFO("SparIterComm",Message,Level=25)
+        CALL SetExecID()
+        CALL xios_initialize(TRIM(ExecID), global_comm=GROUP_COMMS(XIOS_GROUP_IDX))
     ENDIF
-#elif defined(HAVE_YAC)
+#endif
+
+#ifdef HAVE_YAC
     IF (USE_YAC) THEN
       WRITE(Message,*) "Using YAC coupler with config-file:",TRIM(config_file)
       CALL INFO("SparIterComm",Message,Level=25)
       CALL coupling_init("coupling.yaml", ELMER_COMM_WORLD, GROUP_COMMS(COUPLER_GROUP_IDX), GROUP_NAMES(ELMER_GROUP_IDX))
-    ELSE
-#ifndef ELMER_COLOUR
-#define ELMER_COLOUR 0
-#endif
-      CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,ELMER_COLOUR,&
-           ParEnv % MyPE,ELMER_COMM_WORLD,ierr) 
     ENDIF
-#else
-    ! The colour could be set to be some different if we want to couple ElmerSolver with some other
-    ! software having MPI colour set to zero. 
-#ifndef ELMER_COLOUR
-#define ELMER_COLOUR 0
-#endif
-    CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,ELMER_COLOUR,&
-         ParEnv % MyPE,ELMER_COMM_WORLD,ierr) 
 #endif  
-
     
     ParEnv % ActiveComm = ELMER_COMM_WORLD
 
