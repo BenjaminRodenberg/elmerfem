@@ -297,17 +297,17 @@ ENDIF
 IF (USE_XIOS .OR. USE_YAC) THEN
     CALL mpi_handshake(MPI_COMM_WORLD, GROUP_NAMES(1:NUM_GROUPS),&
     GROUP_COMMS(1:NUM_GROUPS))
+    ! Set ELMER_COMM_WORLD determined through mpi_handshake
+    ELMER_COMM_WORLD = GROUP_COMMS(ELMER_GROUP_IDX)
 ELSE
-! The colour could be set to be some different if we want to couple ElmerSolver with some other
-! software having MPI colour set to zero.
+! The colour could be set to be some different if we want to couple
+! ElmerSolver with some other software having MPI colour set to zero.
 #ifndef ELMER_COLOUR
 #define ELMER_COLOUR 0
 #endif
     CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,ELMER_COLOUR,&
     ParEnv % MyPE,ELMER_COMM_WORLD,ierr)
 ENDIF
-
-ELMER_COMM_WORLD = GROUP_COMMS(ELMER_GROUP_IDX)  ! Set ELMER_COMM_WORLD determined through mpi_handshake
 
 ! Use XIOS library for IO
 ! Must have xios and iodef.xml present
@@ -324,7 +324,8 @@ ELMER_COMM_WORLD = GROUP_COMMS(ELMER_GROUP_IDX)  ! Set ELMER_COMM_WORLD determin
     IF (USE_YAC) THEN
       WRITE(Message,*) "Using YAC coupler with config-file:",TRIM(config_file)
       CALL INFO("SparIterComm",Message,Level=25)
-      CALL coupling_init("coupling.yaml", ELMER_COMM_WORLD, GROUP_COMMS(COUPLER_GROUP_IDX), GROUP_NAMES(ELMER_GROUP_IDX))
+      CALL coupling_init("coupling.yaml", ELMER_COMM_WORLD,&
+      GROUP_COMMS(COUPLER_GROUP_IDX), GROUP_NAMES(ELMER_GROUP_IDX))
     ENDIF
 #endif  
     
