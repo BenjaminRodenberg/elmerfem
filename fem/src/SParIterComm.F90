@@ -51,8 +51,7 @@ MODULE SParIterComm
 
 #ifdef HAVE_XIOS
   ! xios_fortran_prefix.hpp exists in all XIOS versions, does not come with C++ features, includes xios_features.h
-! #  include "xios_fortran_prefix.hpp"
-#  define XIOS_USE_MPI_HANDSHAKE
+#  include "xios_fortran_prefix.hpp"
 #endif
 
 ! XIOS_USE_MPI_HANDSHAKE is defined in xios_features.h if XIOS is compiled with handshake support.
@@ -85,8 +84,7 @@ MODULE SParIterComm
 
 ! TODO as soon as XIOS offers mpi_handshake, we can use the code from below:
 # ifdef HAVE_XIOS
-    ! import complete XIOS (for now)
-    USE XIOS, ONLY: xios_get_global_id, xios_initialize, xios_context_finalize, xios_finalize
+    USE XIOS, ONLY: xios_get_global_id
 
 !    ! prefer mpi_handshake from XIOS if XIOS is used
 !     USE XIOS, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
@@ -95,6 +93,10 @@ MODULE SParIterComm
 !     ! use mpi_handshake from YAC if only HAVE_YAC used without HAVE_XIOS
 !     USE elmer_coupling, ONLY: coupling_init, coupling_finalize, coupling_setup, mpi_handshake, MAX_GROUPNAME_LEN
 # endif
+#endif
+
+#ifdef HAVE_XIOS
+  USE XIOS, ONLY: xios_initialize, xios_context_finalize, xios_finalize
 #endif
 
 #ifdef HAVE_YAC
@@ -354,7 +356,11 @@ ParEnv % MyPE,ELMER_COMM_WORLD,ierr)
         WRITE(Message,*) "Using XIOS with config-file: iodef.xml"
         CALL INFO("SparIterComm",Message,Level=25)
         CALL SetExecID()
+#        ifdef XIOS_USE_MPI_HANDSHAKE
         CALL xios_initialize(TRIM(ExecID), global_comm=GROUP_COMMS(XIOS_GROUP_IDX))
+#        else
+        CALL xios_initialize(TRIM(ExecID), return_comm=ELMER_COMM_WORLD)
+#        endif
     ENDIF
 #endif
 
