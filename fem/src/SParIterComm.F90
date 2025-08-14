@@ -50,7 +50,7 @@ MODULE SParIterComm
   USE SParIterGlobals
 
 #ifdef HAVE_XIOS
-  USE XIOS
+  USE XIOS, ONLY: xios_get_global_id, xios_initialize, xios_context_finalize, xios_finalize
 #endif
 
 #ifndef HAVE_PARMMG
@@ -62,7 +62,6 @@ MODULE SParIterComm
 #ifdef HAVE_YAC
   USE elmer_coupling, ONLY: coupling_init, coupling_finalize, coupling_setup, &
                     mpi_handshake, MAX_GROUPNAME_LEN
-  USE elmer_icon_coupling
 #else
   ! If YAC is not used, use the mpi_handshake from mo_mpi_handshake.F90
   USE mo_mpi_handshake, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
