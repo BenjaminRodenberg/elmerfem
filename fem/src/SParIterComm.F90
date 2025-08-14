@@ -50,7 +50,39 @@ MODULE SParIterComm
   USE SParIterGlobals
 
 #ifdef HAVE_XIOS
+  ! xios_fortran_prefix.hpp exists in all XIOS versions, does not come with C++ features, includes xios_features.h
+#  include "xios_fortran_prefix.hpp"
   USE XIOS
+#endif
+
+! XIOS_USE_MPI_HANDSHAKE is defined in xios_features.h if XIOS is compiled with handshake support.
+
+! always use mpi_handshake if YAC is involved; if only XIOS is used, use mpi_handshake if XIOS requires it
+#if defined(HAVE_YAC) || (defined(HAVE_XIOS) && defined(XIOS_USE_MPI_HANDSHAKE))
+#  define ELMER_USE_MPI_HANDSHAKE
+#endif
+
+#ifdef ELMER_USE_MPI_HANDSHAKE
+  ! do some compatibility checks first
+#  ifndef HAVE_YAC
+    ! XIOS does not yet offer mpi_handshake, so we always use mpi_handshake from YAC
+#    error "YAC is not available. Please install YAC or disable the Elmer coupling since XIOS does not offer the necessary functionality for mpi_handshake (yet)."
+#  endif
+#  if defined(HAVE_XIOS) && !defined(XIOS_USE_MPI_HANDSHAKE)
+    ! HAVE_YAC leads to ELMER_USE_MPI_HANDSHAKE, but XIOS does not offer XIOS_USE_MPI_HANDSHAKE
+#    error "XIOS_USE_MPI_HANDSHAKE is not defined, but ELMER_USE_MPI_HANDSHAKE is set. This is incompatible with YAC."
+#  endif
+
+  ! import mpi_handshake from YAC or XIOS
+  USE elmer_coupling, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
+! TODO as soon as XIOS offers mpi_handshake, we can use the code from below:
+! # ifdef HAVE_XIOS
+!     ! prefer mpi_handshake from XIOS if XIOS is used
+!     USE xios, ONLY: mpi_handshake, MAX_GROUPNAME_LEN  ! << Error if HAVE_YAC && HAVE_XIOS && !XIOS_USE_MPI_HANDSHAKE
+! # else
+!     ! use mpi_handshake from YAC if only HAVE_YAC used without HAVE_XIOS
+!     USE elmer_coupling, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
+! # endif
 #endif
 
 #ifndef HAVE_PARMMG
@@ -60,12 +92,8 @@ MODULE SParIterComm
 #endif
 
 #ifdef HAVE_YAC
-  USE elmer_coupling, ONLY: coupling_init, coupling_finalize, coupling_setup, &
-                    mpi_handshake, MAX_GROUPNAME_LEN
+  USE elmer_coupling, ONLY: coupling_init, coupling_finalize, coupling_setup
   USE elmer_icon_coupling
-#else
-  ! If YAC is not used, use the mpi_handshake from mo_mpi_handshake.F90
-  USE mo_mpi_handshake, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
 #endif
 
   IMPLICIT NONE
@@ -91,6 +119,7 @@ MODULE SParIterComm
   INCLUDE "mpif.h"
 #endif
 
+#ifdef ELMER_USE_MPI_HANDSHAKE
   ! Used for MPI_handshake
   ! Classify communicator groups with labels
   INTEGER, PARAMETER :: MAX_NUM_GROUPS = 3
@@ -109,7 +138,7 @@ MODULE SParIterComm
     ! Group for ranks using XIOS, i.e. only Elmer (XIOS clients) + XIOS server
   INTEGER :: XIOS_GROUP_IDX = -1
   CHARACTER(LEN=MAX_GROUPNAME_LEN) :: XIOS_LABEL
-
+#endif
 
   TYPE Buff_t
     REAL(KIND=dp), ALLOCATABLE :: rbuf(:)
@@ -252,16 +281,16 @@ CONTAINS
     CALL MPI_COMM_SIZE( MPI_COMM_WORLD, ParEnv % PEs, ierr )
     CALL MPI_COMM_RANK( MPI_COMM_WORLD, ParEnv % MyPE, ierr )
 
-! Use mpi_handshake for comm splitting
-! TODO how to make sure that mpi_handshake does not conflict with MPI_COMM_SPLIT based on ELMER_COLOUR?
+#ifdef ELMER_USE_MPI_HANDSHAKE
+  ! Use mpi_handshake for comm splitting
+  ! TODO how to make sure that mpi_handshake does not conflict with MPI_COMM_SPLIT based on ELMER_COLOUR?
+  ! Add Elmer group for comm splitting
+  NUM_GROUPS = NUM_GROUPS + 1
+  ELMER_GROUP_IDX = NUM_GROUPS
+  CALL SetExecID()
+  GROUP_NAMES(ELMER_GROUP_IDX) = TRIM(ExecID)
 
-! Add Elmer group for comm splitting
-NUM_GROUPS = NUM_GROUPS + 1
-ELMER_GROUP_IDX = NUM_GROUPS
-CALL SetExecID()
-GROUP_NAMES(ELMER_GROUP_IDX) = TRIM(ExecID)
-
-#ifdef HAVE_XIOS
+#  ifdef HAVE_XIOS
     INQUIRE(FILE="iodef.xml", EXIST=USE_XIOS)
     ! add XIOS group for comm splitting
     IF (USE_XIOS) THEN
@@ -272,9 +301,9 @@ GROUP_NAMES(ELMER_GROUP_IDX) = TRIM(ExecID)
       XIOS_GROUP_IDX = NUM_GROUPS
       GROUP_NAMES(XIOS_GROUP_IDX) = XIOS_LABEL
     ENDIF
-#endif
+#  endif
 
-#ifdef HAVE_YAC
+#  ifdef HAVE_YAC
     ! check config file and set flag USE_YAC
     WRITE(config_file,*) "coupling.yaml"
     INQUIRE(FILE="coupling.yaml", EXIST=USE_YAC)
@@ -287,27 +316,32 @@ GROUP_NAMES(ELMER_GROUP_IDX) = TRIM(ExecID)
         COUPLER_GROUP_IDX = NUM_GROUPS
         GROUP_NAMES(COUPLER_GROUP_IDX) = COUPLER_LABEL
     ENDIF
-#endif
+#  endif
 
-IF (NUM_GROUPS > MAX_NUM_GROUPS) THEN
+  IF (NUM_GROUPS > MAX_NUM_GROUPS) THEN
     WRITE( Message, * ) 'Too many communication groups defined.'
     CALL Fatal( 'ParCommInit', Message )
-ENDIF
+  ENDIF
 
-IF (USE_XIOS .OR. USE_YAC) THEN
+  IF (USE_XIOS .OR. USE_YAC) THEN
     CALL mpi_handshake(MPI_COMM_WORLD, GROUP_NAMES(1:NUM_GROUPS),&
     GROUP_COMMS(1:NUM_GROUPS))
     ! Set ELMER_COMM_WORLD determined through mpi_handshake
     ELMER_COMM_WORLD = GROUP_COMMS(ELMER_GROUP_IDX)
-ELSE
+  ELSE
+#endif
+
 ! The colour could be set to be some different if we want to couple
 ! ElmerSolver with some other software having MPI colour set to zero.
 #ifndef ELMER_COLOUR
 #define ELMER_COLOUR 0
 #endif
-    CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,ELMER_COLOUR,&
-    ParEnv % MyPE,ELMER_COMM_WORLD,ierr)
-ENDIF
+CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,ELMER_COLOUR,&
+ParEnv % MyPE,ELMER_COMM_WORLD,ierr)
+
+#ifdef ELMER_USE_MPI_HANDSHAKE
+  ENDIF
+#endif
 
 ! Use XIOS library for IO
 ! Must have xios and iodef.xml present
