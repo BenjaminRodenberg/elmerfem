@@ -51,8 +51,8 @@ MODULE SParIterComm
 
 #ifdef HAVE_XIOS
   ! xios_fortran_prefix.hpp exists in all XIOS versions, does not come with C++ features, includes xios_features.h
-#  include "xios_fortran_prefix.hpp"
-  USE XIOS
+! #  include "xios_fortran_prefix.hpp"
+#  define XIOS_USE_MPI_HANDSHAKE
 #endif
 
 ! XIOS_USE_MPI_HANDSHAKE is defined in xios_features.h if XIOS is compiled with handshake support.
@@ -60,6 +60,12 @@ MODULE SParIterComm
 ! always use mpi_handshake if YAC is involved; if only XIOS is used, use mpi_handshake if XIOS requires it
 #if defined(HAVE_YAC) || (defined(HAVE_XIOS) && defined(XIOS_USE_MPI_HANDSHAKE))
 #  define ELMER_USE_MPI_HANDSHAKE
+#endif
+
+#ifndef HAVE_PARMMG
+#  if defined(ELMER_HAVE_MPI_MODULE)
+  USE mpi
+#  endif
 #endif
 
 #ifdef ELMER_USE_MPI_HANDSHAKE
@@ -74,26 +80,24 @@ MODULE SParIterComm
 #  endif
 
   ! import mpi_handshake from YAC or XIOS
-  USE elmer_coupling, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
-! TODO as soon as XIOS offers mpi_handshake, we can use the code from below:
-! # ifdef HAVE_XIOS
-!     ! prefer mpi_handshake from XIOS if XIOS is used
-!     USE xios, ONLY: mpi_handshake, MAX_GROUPNAME_LEN  ! << Error if HAVE_YAC && HAVE_XIOS && !XIOS_USE_MPI_HANDSHAKE
-! # else
-!     ! use mpi_handshake from YAC if only HAVE_YAC used without HAVE_XIOS
-!     USE elmer_coupling, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
-! # endif
-#endif
+  USE elmer_coupling, ONLY: coupling_init, coupling_finalize, coupling_setup, mpi_handshake, MAX_GROUPNAME_LEN
+  USE elmer_icon_coupling
 
-#ifndef HAVE_PARMMG
-#  if defined(ELMER_HAVE_MPI_MODULE)
-  USE mpi
-#  endif
+! TODO as soon as XIOS offers mpi_handshake, we can use the code from below:
+# ifdef HAVE_XIOS
+    ! import complete XIOS (for now)
+    USE XIOS, ONLY: xios_get_global_id, xios_initialize, xios_context_finalize, xios_finalize
+
+!    ! prefer mpi_handshake from XIOS if XIOS is used
+!     USE XIOS, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
+!     USE elmer_coupling, ONLY: coupling_init, coupling_finalize, coupling_setup
+# else
+!     ! use mpi_handshake from YAC if only HAVE_YAC used without HAVE_XIOS
+!     USE elmer_coupling, ONLY: coupling_init, coupling_finalize, coupling_setup, mpi_handshake, MAX_GROUPNAME_LEN
+# endif
 #endif
 
 #ifdef HAVE_YAC
-  USE elmer_coupling, ONLY: coupling_init, coupling_finalize, coupling_setup
-  USE elmer_icon_coupling
 #endif
 
   IMPLICIT NONE
