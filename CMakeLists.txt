@@ -496,7 +496,7 @@ IF (WITH_XIOS)
     MESSAGE(STATUS "  XIOS_INC:       " "${XIOS_INCLUDE_DIR}")
     MESSAGE(STATUS "  XIOS_LIB :      " "${XIOS_LIBRARIES}")
   ELSE()
-    MESSAGE(STATUS "  XIOS not found ")
+    MESSAGE(STATUS "  ${XIOS_FAILMSG}")
   ENDIF()
 
   MESSAGE(STATUS "------------------------------------------------")
