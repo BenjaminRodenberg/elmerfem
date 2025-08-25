@@ -90,12 +90,11 @@ MODULE SParIterComm
 # ifdef HAVE_XIOS
     USE XIOS, ONLY: xios_get_global_id
 
-!    ! prefer mpi_handshake from XIOS if XIOS is used
-!     USE XIOS, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
-!     USE elmer_coupling, ONLY: coupling_init, coupling_finalize, coupling_setup
+    ! prefer mpi_handshake from XIOS if XIOS is used
+    USE XIOS, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
 # else
-!     ! use mpi_handshake from YAC if only HAVE_YAC used without HAVE_XIOS
-!     USE elmer_coupling, ONLY: coupling_init, coupling_finalize, coupling_setup, mpi_handshake, MAX_GROUPNAME_LEN
+    ! use mpi_handshake from YAC if only HAVE_YAC used without HAVE_XIOS
+    USE elmer_coupling, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
 # endif
 #endif
 
@@ -104,6 +103,7 @@ MODULE SParIterComm
 #endif
 
 #ifdef HAVE_YAC
+  USE elmer_coupling, ONLY: coupling_init, coupling_finalize, coupling_setup
 #endif
 
   IMPLICIT NONE
@@ -329,7 +329,7 @@ CONTAINS
 #  endif
 
   IF (NUM_GROUPS > MAX_NUM_GROUPS) THEN
-    WRITE( Message, * ) 'Too many communication groups defined.'
+    WRITE( Message,'(A)') 'Too many communication groups defined.'
     CALL Fatal( 'ParCommInit', Message )
   ENDIF
 
@@ -346,6 +346,7 @@ CONTAINS
 #ifndef ELMER_COLOUR
 #define ELMER_COLOUR 0
 #endif
+
 CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,ELMER_COLOUR,&
 ParEnv % MyPE,ELMER_COMM_WORLD,ierr)
 
@@ -357,7 +358,7 @@ ParEnv % MyPE,ELMER_COMM_WORLD,ierr)
 ! Must have xios and iodef.xml present
 #ifdef HAVE_XIOS
     IF (USE_XIOS) THEN
-        WRITE(Message,*) "Using XIOS with config-file: iodef.xml"
+        WRITE( Message,'(A)') 'Using XIOS with config-file: iodef.xml'
         CALL INFO("SparIterComm",Message,Level=25)
         CALL SetExecID()
 #        ifdef XIOS_USE_MPI_HANDSHAKE
@@ -376,7 +377,9 @@ ParEnv % MyPE,ELMER_COMM_WORLD,ierr)
       GROUP_COMMS(COUPLER_GROUP_IDX), GROUP_NAMES(ELMER_GROUP_IDX))
     ENDIF
 #endif  
+    
     ParEnv % ActiveComm = ELMER_COMM_WORLD
+
 
 !ELMER_COMM_WORLD=MPI_COMM_WORLD
 
@@ -898,7 +901,7 @@ CONTAINS
      TYPE(Element_t), POINTER :: Element
      real(kind=dp) :: tt
 !-------------------------------------------------------------------------------
-
+     
     IF ( .NOT. ASSOCIATED(Mesh % Edges) ) RETURN
     IF ( Mesh % NumberOfEdges <= 0 ) RETURN
 
