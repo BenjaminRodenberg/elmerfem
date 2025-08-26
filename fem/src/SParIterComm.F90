@@ -73,10 +73,6 @@ MODULE SParIterComm
 #    error "It looks like you are trying to use ELMER_COLOUR and mpi_handshake at the same time. These features are incompatible. Please review your configuration and dependencies."
 #  endif
 
-#  ifndef HAVE_YAC
-    ! XIOS does not yet offer mpi_handshake, so we always use mpi_handshake from YAC
-#    error "YAC is not available. Please install YAC or disable the Elmer coupling since XIOS does not offer the necessary functionality for mpi_handshake (yet)."
-#  endif
 #  if defined(HAVE_XIOS) && !defined(XIOS_USE_MPI_HANDSHAKE)
     ! HAVE_YAC leads to ELMER_USE_MPI_HANDSHAKE, but XIOS does not offer XIOS_USE_MPI_HANDSHAKE
 #    error "XIOS_USE_MPI_HANDSHAKE is not defined, but ELMER_USE_MPI_HANDSHAKE is set. This is incompatible with YAC."
