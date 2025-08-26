@@ -849,7 +849,7 @@ MODULE Interpolation
 !> element (Nedelec) interpolant.
 !------------------------------------------------------------------------------
   SUBROUTINE NodalToNedelecInterpolation_GlobalMatrix(Mesh, NodalVar, &
-      VectorElementVar, GlobalPiMat, cdim)
+      VectorElementVar, GlobalPiMat, cdim, UseNodalPermArg )
 !------------------------------------------------------------------------------
     IMPLICIT NONE
     TYPE(Mesh_t), POINTER :: Mesh
@@ -857,6 +857,7 @@ MODULE Interpolation
     TYPE(Variable_t), POINTER, INTENT(IN) :: VectorElementVar
     TYPE(Matrix_t), POINTER :: GlobalPiMat  !< Used for the global representation
     INTEGER, OPTIONAL :: cdim      !< The number of spatial coordinates
+    LOGICAL, OPTIONAL :: UseNodalPermArg
 !------------------------------------------------------------------------------
     INTEGER, PARAMETER :: MaxEDOFs = 2
     INTEGER, PARAMETER :: MaxFDOFs = 2
@@ -869,20 +870,33 @@ MODULE Interpolation
         vdofs, edgej, facej
     REAL(KIND=dp) :: PiMat(MaxEDOFs,6), FacePiMat(MaxFDOFs,12)
     CHARACTER(*), PARAMETER :: Caller = 'NodalToNedelecInterpolation_GlobalMatrix'
+    LOGICAL :: UseNodalPerm, DoFatal
+    INTEGER, POINTER :: VectorPerm(:), NodalPerm(:)
 !------------------------------------------------------------------------------
-    IF (.NOT. ASSOCIATED(NodalVar) .OR. .NOT. ASSOCIATED(VectorElementVar)) THEN
-      CALL Fatal(Caller, 'H1 or H(curl) variable is not associated')
-    END IF
-    
-    IF (ASSOCIATED(Mesh)) THEN
-      IF (.NOT. ASSOCIATED(Mesh % Edges)) CALL Fatal(Caller, 'Mesh edges not associated!')
-    ELSE
-      CALL Fatal(Caller, 'Mesh structure is not associated')
-    END IF
 
-    IF (ASSOCIATED(GlobalPiMat)) THEN
-      CALL Fatal(Caller, 'Matrix structure has already been created')
+    CALL Info(Caller,'Creating interpolation matrix between H1 and H(curl)!')
+    
+    DoFatal = .FALSE.
+    IF (.NOT. ASSOCIATED(NodalVar)) THEN
+      CALL Warn(Caller, 'H1 variable is not associated!')
+      DoFatal = .TRUE.
     END IF
+    IF (.NOT. ASSOCIATED(VectorElementVar)) THEN
+      CALL Warn(Caller, 'H(curl) variable is not associated!')
+      DoFatal = .TRUE.
+    END IF   
+    IF(.NOT. ASSOCIATED(Mesh)) THEN
+      CALL Warn(Caller, 'Mesh structure is not associated!')
+      DoFatal = .TRUE.
+    END IF
+    IF (ASSOCIATED(GlobalPiMat)) THEN
+      CALL Warn(Caller, 'Matrix structure has already been created')
+      DoFatal = .TRUE.
+    END IF
+    IF(DoFatal) CALL Fatal(Caller,'Cannot continue with these errors!')
+    
+    IF (.NOT. ASSOCIATED(Mesh % Edges)) CALL Fatal(Caller, 'Mesh edges not associated!')
+
 
     IF (PRESENT(cdim)) THEN
       dim = cdim
@@ -890,6 +904,15 @@ MODULE Interpolation
       dim = 3
     END IF
     vdofs = VectorElementVar % DOFs
+    IF(vdofs /=1 .AND. vdofs /= 2) THEN
+      CALL Fatal(Caller,'Vector dofs only makes sense for values 1 and 2!')
+    END IF
+    
+    NodalPerm => NodalVar % Perm
+    UseNodalPerm = .TRUE.
+    IF ( PRESENT(UseNodalPermArg) ) UseNodalPerm = UseNodalPermArg
+
+    VectorPerm => VectorElementVar % Perm
 
     IF (NodalVar % DOFs /= dim * vdofs) CALL Fatal(Caller, &
         'Coordinate system dimension and DOF counts are not as expected')
@@ -927,16 +950,24 @@ MODULE Interpolation
 
       i1 = Edge % NodeIndexes(1)
       i2 = Edge % NodeIndexes(2)
-      k1 = NodalVar % Perm(i1)
-      k2 = NodalVar % Perm(i2)
+
+      IF ( UseNodalPerm ) THEN
+        k1 = NodalPerm(i1)
+        k2 = NodalPerm(i2)
+      ELSE
+        k1 =  i1
+        k2 =  i2
+      END IF
 
       DO dofi=1, vdofs
         DO j=1,EDOFs
-          k = VectorElementVar % Perm(Ind(j))
+          k = VectorPerm(Ind(j))
           k0 = vdofs*(k-1)+dofi
           DO i=1,dim
-            CALL List_AddToMatrixElement(GlobalPiMat % ListMatrix, k0, 6*(k1-1)+2*(i-1)+dofi, PiMat(j,i) )
-            CALL List_AddToMatrixElement(GlobalPiMat % ListMatrix, k0, 6*(k2-1)+2*(i-1)+dofi, PiMat(j,3+i) )
+            CALL List_AddToMatrixElement(GlobalPiMat % ListMatrix, k0, 3*vdofs*(k1-1)+vdofs*(i-1)+dofi, PiMat(j,i) )
+            IF(vdofs==2) THEN
+              CALL List_AddToMatrixElement(GlobalPiMat % ListMatrix, k0, 3*vdofs*(k2-1)+vdofs*(i-1)+dofi, PiMat(j,3+i) )
+            END IF
           END DO
         END DO
       END DO
@@ -946,6 +977,9 @@ MODULE Interpolation
       DO facej=1, Mesh % NumberOfFaces
         Face => Mesh % Faces(facej)
         IF (Face % BDOFs < 1) CYCLE
+
+        ! TEMPORARY FIX FOR TRIANGULAR FACES
+        IF ( Face % Type % ElementCode /100 == 3 ) CYCLE
         
         nd = mGetElementDOFs(Ind, Face, VectorElementVar % Solver)
 
@@ -963,10 +997,11 @@ MODULE Interpolation
 
         DO dofi=1, vdofs
           DO j=1,Face % BDOFs
-            k2 = VectorElementVar % Perm(Ind(j+i0))
+            k2 = VectorPerm(Ind(j+i0))
             k0 = vdofs*(k2-1)+dofi
             DO i=1,Face % TYPE % NumberOfNodes
-              k1 = NodalVar % Perm(Face % NodeIndexes(i))
+              k1 = Face % NodeIndexes(i)
+              IF(UseNodalPerm) k1 = NodalPerm(k1)
               DO k=1,dim
                 CALL List_AddToMatrixElement(GlobalPiMat % ListMatrix, k0, 6*(k1-1)+2*(k-1)+dofi, FacePiMat(j,3*(i-1)+k) )
               END DO
@@ -1009,6 +1044,7 @@ MODULE Interpolation
     
     INTEGER :: EDOFs, i, k, p, i1, i2, j1, j2, n
     REAL(KIND=dp) :: dBasis(2,3), Basis(2), detJ, s, e(3), t(3), fun(3), u, v
+
 !------------------------------------------------------------------------------
     IF ((Edge % Type % ElementCode / 100) /= 2) THEN
       CALL Warn('NodalGradientToNedelecPiMatrix', 'A 1-dimensional element expected')
@@ -1201,13 +1237,15 @@ MODULE Interpolation
 
 !------------------------------------------------------------------------------
   SUBROUTINE NodalGradientToNedelecInterpolation_GlobalMatrix(Mesh, NodalVar, &
-      VectorElementVar, GlobalPiMat)
+      VectorElementVar, GlobalPiMat, cdim, UseNodalPermArg )
 !------------------------------------------------------------------------------
     IMPLICIT NONE
     TYPE(Mesh_t), POINTER :: Mesh
     TYPE(Variable_t), POINTER, INTENT(IN) :: NodalVar
     TYPE(Variable_t), POINTER, INTENT(IN) :: VectorElementVar
     TYPE(Matrix_t), POINTER :: GlobalPiMat  !< Used for the global representation
+    INTEGER, OPTIONAL :: cdim
+    LOGICAL, OPTIONAL :: UseNodalPermArg
 !------------------------------------------------------------------------------
     INTEGER, PARAMETER :: MaxEDOFs = 2
     INTEGER, PARAMETER :: MaxFDOFs = 2
@@ -1215,9 +1253,11 @@ MODULE Interpolation
     TYPE(Element_t), POINTER :: Edge, Face
     LOGICAL :: PiolaVersion, SecondKindBasis, SecondOrder
     INTEGER, ALLOCATABLE, SAVE :: Ind(:)
-    INTEGER :: EDOFs, dof, i, istat, i0, j, k, l, m, nd, ndofs, p, q, vdofs
+    INTEGER :: EDOFs, dof, i, istat, i0, j, k, l, m, nd, ndofs, p, q, vdofs, dim
     REAL(KIND=dp) :: PiMat(MaxEDOFs,2), FacePiMat(MaxFDOFs,4)
     CHARACTER(*), PARAMETER :: Caller = 'NodalGradientToNedelecInterpolation_GlobalMatrix'
+    LOGICAL  :: UseNodalPerm
+    INTEGER, POINTER :: VectorPerm(:), NodalPerm(:)
 !------------------------------------------------------------------------------
     IF (.NOT. ASSOCIATED(NodalVar) .OR. .NOT. ASSOCIATED(VectorElementVar)) THEN
       CALL Fatal(Caller, 'H1 or H(curl) variable is not associated')
@@ -1233,10 +1273,22 @@ MODULE Interpolation
       CALL Fatal(Caller, 'Matrix structure has already been created')
     END IF
 
+    IF (PRESENT(cdim)) THEN
+      dim = cdim
+    ELSE
+      dim = 3
+    END IF
+
     vdofs = VectorElementVar % DOFs
     ndofs = NodalVar % DOFs
-    IF (ndofs /= vdofs) CALL Fatal(Caller, &
+    IF (ndofs /= dim * vdofs .AND. ndofs /= vdofs) CALL Fatal(Caller, &
         'Coordinate system dimension and DOF counts are not as expected')
+
+    UseNodalPerm = .TRUE.
+    NodalPerm => NodalVar % Perm
+    IF(PRESENT(UseNodalPermArg)) UseNodalPerm = UseNodalPermArg
+
+    VectorPerm => VectorElementVar % Perm
     
     CALL EdgeElementStyle(VectorElementVar % Solver % Values, PiolaVersion, SecondKindBasis, &
         SecondOrder, Check = .TRUE.)
@@ -1271,10 +1323,11 @@ MODULE Interpolation
 
       DO dof=1,vDOFs
         DO i=1,Edge % Type % NumberOfNodes
-          m = NodalVar % Perm(Edge % NodeIndexes(i))
+          m = Edge % NodeIndexes(i)
+          IF ( UseNodalPerm ) m = NodalPerm(m)
           l = ndofs*(m-1) + dof
           DO p=1,EDOFs
-            q = VectorElementVar % Perm(Ind(p))
+            q = VectorPerm(Ind(p))
             k = vdofs*(q-1)+dof
             CALL List_AddToMatrixElement(GlobalPiMat % ListMatrix, k, l, PiMat(p,i))
           END DO
@@ -1286,6 +1339,9 @@ MODULE Interpolation
       DO j=1, Mesh % NumberOfFaces
         Face => Mesh % Faces(j)
         IF (Face % BDOFs < 1) CYCLE
+
+        ! TEMPORARY FIX FOR TRIANGULAR FACES
+        IF ( Face % Type % ElementCode /100 == 3 ) CYCLE
         
         nd = mGetElementDOFs(Ind, Face, VectorElementVar % Solver)
 
@@ -1303,10 +1359,11 @@ MODULE Interpolation
 
         DO dof=1,vdofs
           DO p=1,Face % BDOFs
-            k = VectorElementVar % Perm(Ind(p+i0))
+            k = VectorPerm(Ind(p+i0))
             k = vdofs*(k-1)+dof
             DO i=1,Face % TYPE % NumberOfNodes
-              m = NodalVar % Perm(Face % NodeIndexes(i))
+              m = Face % NodeIndexes(i)
+              IF ( UseNodalPerm ) m = NodalPerm(m)
               l = ndofs*(m-1) + dof
               CALL List_AddToMatrixElement(GlobalPiMat % ListMatrix, k, l, FacePiMat(p,i))
             END DO
