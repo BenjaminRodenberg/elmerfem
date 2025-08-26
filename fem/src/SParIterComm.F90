@@ -83,10 +83,6 @@ MODULE SParIterComm
 #  endif
 
   ! import mpi_handshake from YAC or XIOS
-  USE elmer_coupling, ONLY: coupling_init, coupling_finalize, coupling_setup, mpi_handshake, MAX_GROUPNAME_LEN
-  USE elmer_icon_coupling
-
-! TODO as soon as XIOS offers mpi_handshake, we can use the code from below:
 # ifdef HAVE_XIOS
     USE XIOS, ONLY: xios_get_global_id
 
