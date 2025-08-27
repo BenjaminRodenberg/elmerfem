@@ -359,7 +359,7 @@ CONTAINS
   SUBROUTINE coupling_setup(grid_dir, num_parts)
 
     USE :: elmer_icon_coupling
-    USE, INTRINSIC :: iso_c_binding, ONLY: C_INT, C_DOUBLE, C_PTR, C_F_POINTER
+    USE, INTRINSIC :: iso_c_binding, ONLY: C_INT, C_DOUBLE, C_PTR, C_F_POINTER, C_NULL_CHAR
 
     IMPLICIT NONE
 
