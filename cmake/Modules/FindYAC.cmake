@@ -46,9 +46,34 @@ FIND_LIBRARY(YAC_LIBRARY yac HINTS ${YACLIB})
 
 IF (YAC_INCLUDE_DIR AND YAC_LIBRARY)
   UNSET(YAC_FAILMSG)
-  SET(YACLIB_FOUND TRUE)
   SET(YAC_INCLUDE_DIR ${YAC_INCLUDE_DIR})
-  SET(YAC_LIBRARIES "${YAC_LIBRARY}")
+
+  # List of YAC static libraries
+  SET(YACLIB_NAMES
+    libyac.a
+    libyac_utils.a
+    libyac_core.a
+    libyac_clapack.a
+    libyac_mci.a
+    libyac_mtime.a
+  )
+
+  # Determine directory of the found YAC library
+  get_filename_component(YACLIB_DIR "${YAC_LIBRARY}" DIRECTORY)
+
+  SET(YAC_LIBRARIES "")
+  FOREACH(LIB ${YACLIB_NAMES})
+    SET(YAC_LIB_PATH "${YACLIB_DIR}/${LIB}")
+    IF (EXISTS "${YAC_LIB_PATH}")
+      LIST(APPEND YAC_LIBRARIES "${YAC_LIB_PATH}")
+    ELSE()
+      # if any of the expected libraries is not found return with error
+      SET(YAC_FAILMSG "YAC:           Expected library not found: ${YAC_LIB_PATH}.")
+      SET(YACLIB_FOUND FALSE)
+      RETURN()
+    ENDIF()
+  ENDFOREACH()
+  SET(YACLIB_FOUND TRUE)
 ELSE()
   SET(YAC_FAILMSG "YAC libraries not found.")
 ENDIF()
