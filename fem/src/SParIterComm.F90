@@ -286,7 +286,6 @@ CONTAINS
 
 #ifdef ELMER_USE_MPI_HANDSHAKE
   ! Use mpi_handshake for comm splitting
-  ! TODO how to make sure that mpi_handshake does not conflict with MPI_COMM_SPLIT based on ELMER_COLOUR?
   ! Add Elmer group for comm splitting
   NUM_GROUPS = NUM_GROUPS + 1
   ELMER_GROUP_IDX = NUM_GROUPS
@@ -364,7 +363,7 @@ ParEnv % MyPE,ELMER_COMM_WORLD,ierr)
 
 #ifdef HAVE_YAC
     IF (USE_YAC) THEN
-      WRITE(Message,*) "Using YAC coupler with config-file:",TRIM(config_file)
+      WRITE(Message,'(A,A)') "Using YAC coupler with config-file:",TRIM(config_file)
       CALL INFO("SparIterComm",Message,Level=25)
       CALL coupling_init("coupling.yaml", ELMER_COMM_WORLD,&
       GROUP_COMMS(COUPLER_GROUP_IDX), GROUP_NAMES(ELMER_GROUP_IDX))
