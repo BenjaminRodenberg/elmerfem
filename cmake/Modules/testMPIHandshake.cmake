@@ -10,6 +10,7 @@ PROGRAM test_mpi_handshake
 END PROGRAM test_mpi_handshake
 ")
 
+set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -I${XIOS_INCLUDE_DIR}")
 TRY_COMPILE(TEST_XIOS_HAS_MPI_HANDSHAKE
     ${CMAKE_BINARY_DIR}
     ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp/test_xios_mpi_handshake.f90
