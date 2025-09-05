@@ -49,15 +49,9 @@ MODULE SParIterComm
   USE LoadMod, ONLY : RealTime
   USE SParIterGlobals
 
-#ifdef HAVE_XIOS
-  ! xios_fortran_prefix.hpp exists in all XIOS versions, does not come with C++ features, includes xios_features.h
-#  include "xios_fortran_prefix.hpp"
-#endif
-
-! XIOS_USE_MPI_HANDSHAKE is defined in xios_features.h if XIOS is compiled with handshake support.
-
-! always use mpi_handshake if YAC is involved; if only XIOS is used, use mpi_handshake if XIOS requires it
-#if defined(HAVE_YAC) || (defined(HAVE_XIOS) && defined(XIOS_USE_MPI_HANDSHAKE))
+! always use mpi_handshake if YAC is involved; if only XIOS is used, use
+! mpi_handshake if XIOS requires it
+#if defined(HAVE_YAC) || (defined(HAVE_XIOS) && defined(XIOS_HAS_MPI_HANDSHAKE))
 #  define ELMER_USE_MPI_HANDSHAKE
 #endif
 
@@ -70,12 +64,15 @@ MODULE SParIterComm
 #ifdef ELMER_USE_MPI_HANDSHAKE
   ! do some compatibility checks first
 #  ifdef ELMER_COLOUR
-#    error "It looks like you are trying to use ELMER_COLOUR and mpi_handshake at the same time. These features are incompatible. Please review your configuration and dependencies."
+#    error "It looks like you are trying to use ELMER_COLOUR and mpi_handshake"
+#    error "at the same time. These features are incompatible. Please review"
+#    error "your configuration and dependencies."
 #  endif
 
-#  if defined(HAVE_XIOS) && !defined(XIOS_USE_MPI_HANDSHAKE)
-    ! HAVE_YAC leads to ELMER_USE_MPI_HANDSHAKE, but XIOS does not offer XIOS_USE_MPI_HANDSHAKE
-#    error "XIOS_USE_MPI_HANDSHAKE is not defined, but ELMER_USE_MPI_HANDSHAKE is set. This is incompatible with YAC."
+#  if defined(HAVE_XIOS) && !defined(XIOS_HAS_MPI_HANDSHAKE)
+#    error "XIOS does not offer the MPI Handshake API (XIOS_HAS_MPI_HANDSHAKE"
+#    error "unset) is not defined, but ELMER_USE_MPI_HANDSHAKE is set."
+#    error "This is incompatible with YAC."
 #  endif
 
   ! import mpi_handshake from YAC or XIOS
@@ -96,7 +93,11 @@ MODULE SParIterComm
 #endif
 
 #ifdef HAVE_YAC
-  USE elmer_coupling, ONLY: coupling_init, coupling_finalize, coupling_setup, coupler_get_code_id
+  USE elmer_coupling, ONLY: &
+       coupling_init, &
+       coupling_finalize, &
+       coupling_setup, &
+       coupler_get_code_id
 #endif
 
   IMPLICIT NONE
@@ -353,10 +354,14 @@ ParEnv % MyPE,ELMER_COMM_WORLD,ierr)
         WRITE( Message,'(A)') 'Using XIOS with config-file: iodef.xml'
         CALL INFO("SparIterComm",Message,Level=25)
         CALL SetExecID()
-#        ifdef XIOS_USE_MPI_HANDSHAKE
-        CALL xios_initialize(TRIM(ExecID), global_comm=GROUP_COMMS(XIOS_GROUP_IDX))
+#        ifdef ELMER_USE_MPI_HANDSHAKE
+        CALL xios_initialize( &
+              TRIM(ExecID), &
+              global_comm=GROUP_COMMS(XIOS_GROUP_IDX))
 #        else
-        CALL xios_initialize(TRIM(ExecID), return_comm=ELMER_COMM_WORLD)
+        CALL xios_initialize( &
+              TRIM(ExecID), &
+              return_comm=ELMER_COMM_WORLD)
 #        endif
     ENDIF
 #endif
