@@ -483,8 +483,13 @@ ENDIF()
 
 # XIOS
 IF (WITH_XIOS)
+  MESSAGE(STATUS "------------------------------------------------")
+  MESSAGE(STATUS "  Checking for XIOS-related dependencies")
+  MESSAGE(STATUS "  NETCDF:                 " "${NETCDF_FOUND}")
+
   IF (NOT NETCDF_FOUND)
-    MESSAGE(FATAL_ERROR "Building with XIOS requires NetCDF.")
+    MESSAGE(FATAL_ERROR "Building with XIOS requires NetCDF. Please configure "
+                        "with -DWITH_NETCDF=ON and make sure NetCDF is found.")
   ENDIF()
 
   MESSAGE(STATUS "------------------------------------------------")
@@ -492,91 +497,110 @@ IF (WITH_XIOS)
 
   FIND_PACKAGE(XIOS)
 
+  MESSAGE(STATUS "  XIOS_FOUND:             " "${XIOS_FOUND}")
+  MESSAGE(STATUS "  XIOS_INC:               " "${XIOS_INCLUDE_DIR}")
+  MESSAGE(STATUS "  XIOS_LIB :              " "${XIOS_LIBRARIES}")
   IF(XIOS_FOUND)
     SET(HAVE_XIOS TRUE)
     MARK_AS_ADVANCED(HAVE_XIOS)
     INCLUDE_DIRECTORIES(${XIOS_INCLUDE_DIR})
     LINK_DIRECTORIES(${XIOS_LIBRARIES})
+    ADD_DEFINITIONS(-DHAVE_XIOS)
 
     INCLUDE(testMPIHandshake)
+
+    MESSAGE(STATUS "  XIOS_HAS_MPI_HANDSHAKE: " "${XIOS_HAS_MPI_HANDSHAKE}")
 
     IF(XIOS_HAS_MPI_HANDSHAKE)
       ADD_DEFINITIONS(-DXIOS_HAS_MPI_HANDSHAKE)
     ENDIF(XIOS_HAS_MPI_HANDSHAKE)
 
-    ADD_DEFINITIONS(-DHAVE_XIOS)
-    MESSAGE(STATUS "  XIOS:                   " "${XIOS_FOUND}")
-    MESSAGE(STATUS "  XIOS_INC:               " "${XIOS_INCLUDE_DIR}")
-    MESSAGE(STATUS "  XIOS_LIB :              " "${XIOS_LIBRARIES}")
-    MESSAGE(STATUS "  XIOS_HAS_MPI_HANDSHAKE: " "${XIOS_HAS_MPI_HANDSHAKE}")
-  ELSE()
+  ELSE(XIOS_FOUND)
     MESSAGE(STATUS "  ${XIOS_FAILMSG}")
-  ENDIF()
+  ENDIF(XIOS_FOUND)
 
   MESSAGE(STATUS "------------------------------------------------")
 ENDIF()
 
 # YAC
 IF (WITH_YAC)
+  MESSAGE(STATUS "------------------------------------------------")
+  MESSAGE(STATUS "  Checking for YAC-related dependencies")
+
+  MESSAGE(STATUS "  MPI_FOUND:              " "${MPI_FOUND}")
+
   IF(NOT MPI_FOUND)
-    MESSAGE(FATAL_ERROR "Building with YAC requires MPI.")
+  MESSAGE(FATAL_ERROR "Building with YAC requires MPI. Please configure with "
+                      "-DWITH_MPI=ON and make sure MPI is found.")
   ENDIF()
 
+  MESSAGE(STATUS "  NETCDF_FOUND:           " "${NETCDF_FOUND}")
+
   IF(NOT NETCDF_FOUND)
-    MESSAGE(FATAL_ERROR "Building with YAC requires NetCDF.")
+  MESSAGE(FATAL_ERROR "Building with YAC requires NetCDF. Please configure "
+                      "with -DWITH_NETCDF=ON and make sure NetCDF is found.")
   ENDIF()
+
+  MESSAGE(STATUS "  XIOS_HAS_MPI_HANDSHAKE: " "${XIOS_HAS_MPI_HANDSHAKE}")
 
   IF(WITH_XIOS)
     IF(NOT XIOS_HAS_MPI_HANDSHAKE)
-      MESSAGE(FATAL_ERROR
-        "Building WITH_YAC and WITH_XIOS requires XIOS_HAS_MPI_HANDSHAKE.")
+      MESSAGE(FATAL_ERROR "Building WITH_YAC and WITH_XIOS requires "
+                          "XIOS_HAS_MPI_HANDSHAKE. Please rebuild XIOS with "
+                          "MPI handshake support.")
     ENDIF()
   ENDIF()
 
-  MESSAGE(STATUS "------------------------------------------------")
-  MESSAGE(STATUS "  Looking for YAC ")
-
   FIND_PACKAGE(YAXT)
+
+  MESSAGE(STATUS "  YAXT_FOUND:     " "${YAXT_FOUND}")
+  MESSAGE(STATUS "  YAXT_INC:       " "${YAXT_INCLUDE_DIR}")
+  MESSAGE(STATUS "  YAXT_LIB :      " "${YAXT_LIBRARIES}")
+
   IF(YAXT_FOUND)
     SET(HAVE_YAXT TRUE)
     MARK_AS_ADVANCED(HAVE_YAXT)
     INCLUDE_DIRECTORIES(${YAXT_INCLUDE_DIR})
     LINK_DIRECTORIES(${YAXT_LIBRARIES})
     ADD_DEFINITIONS(-DHAVE_YAXT)
-    MESSAGE(STATUS "  YAXT:           " "${YAXT_FOUND}")
-    MESSAGE(STATUS "  YAXT_INC:       " "${YAXT_INCLUDE_DIR}")
-    MESSAGE(STATUS "  YAXT_LIB :      " "${YAXT_LIBRARIES}")
   ELSE()
     MESSAGE(FATAL_ERROR "WITH_YAC requires YAXT_FOUND.  ${YAXT_FAILMSG}")
   ENDIF()
-  
+
   FIND_PACKAGE(YAML)
-    IF(YAML_FOUND)
+
+  MESSAGE(STATUS "  YAML_FOUND:     " "${YAML_FOUND}")
+  MESSAGE(STATUS "  YAML_INC:       " "${YAML_INCLUDE_DIR}")
+  MESSAGE(STATUS "  YAML_LIB :      " "${YAML_LIBRARIES}")
+
+  IF(YAML_FOUND)
     SET(HAVE_YAML TRUE)
     MARK_AS_ADVANCED(HAVE_YAML)
     INCLUDE_DIRECTORIES(${YAML_INCLUDE_DIR})
     LINK_DIRECTORIES(${YAML_LIBRARIES})
     ADD_DEFINITIONS(-DHAVE_YAML)
-    MESSAGE(STATUS "  YAML:           " "${YAML_FOUND}")
-    MESSAGE(STATUS "  YAML_INC:       " "${YAML_INCLUDE_DIR}")
-    MESSAGE(STATUS "  YAML_LIB :      " "${YAML_LIBRARIES}")
   ELSE()
     MESSAGE(FATAL_ERROR "WITH_YAC requires YAML_FOUND.  YAML not found ")
   ENDIF()
 
   FIND_PACKAGE(Proj)
-    IF(Proj_FOUND)
+
+  MESSAGE(STATUS "  Proj_FOUND:     " "${Proj_FOUND}")
+  MESSAGE(STATUS "  Proj_INC:       " "${Proj_INCLUDE_DIR}")
+  MESSAGE(STATUS "  Proj_LIB :      " "${Proj_LIBRARIES}")
+
+  IF(Proj_FOUND)
     SET(HAVE_Proj TRUE)
     MARK_AS_ADVANCED(HAVE_Proj)
     INCLUDE_DIRECTORIES(${Proj_INCLUDE_DIR})
     LINK_DIRECTORIES(${Proj_LIBRARIES})
     ADD_DEFINITIONS(-DHAVE_Proj)
-    MESSAGE(STATUS "  Proj:           " "${Proj_FOUND}")
-    MESSAGE(STATUS "  Proj_INC:       " "${Proj_INCLUDE_DIR}")
-    MESSAGE(STATUS "  Proj_LIB :      " "${Proj_LIBRARIES}")
   ELSE()
     MESSAGE(FATAL_ERROR "WITH_YAC requires Proj_FOUND.  Proj not found ")
   ENDIF()
+
+  MESSAGE(STATUS "------------------------------------------------")
+  MESSAGE(STATUS "  Looking for YAC ")
 
   FIND_PACKAGE(YAC)
   IF(YAC_FOUND)
@@ -593,7 +617,7 @@ IF (WITH_YAC)
   ENDIF()
 
   MESSAGE(STATUS "------------------------------------------------")
-ENDIF()		 
+ENDIF(WITH_YAC)
 
 
 MESSAGE(STATUS "------------------------------------------------")
