@@ -483,7 +483,7 @@ ENDIF()
 
 # XIOS
 IF (WITH_XIOS)
-  IF (NOT WITH_NETCDF)
+  IF (NOT NETCDF_FOUND)
     MESSAGE(FATAL_ERROR "Building with XIOS requires NetCDF.")
   ENDIF()
 
@@ -518,8 +518,12 @@ ENDIF()
 
 # YAC
 IF (WITH_YAC)
-  IF(NOT WITH_MPI)
+  IF(NOT MPI_FOUND)
     MESSAGE(FATAL_ERROR "Building with YAC requires MPI.")
+  ENDIF()
+
+  IF(NOT NETCDF_FOUND)
+    MESSAGE(FATAL_ERROR "Building with YAC requires NetCDF.")
   ENDIF()
 
   IF(WITH_XIOS)
