@@ -318,7 +318,7 @@ CONTAINS
   CALL SetExecID()
   GROUP_NAMES(ELMER_GROUP_IDX) = TRIM(ExecID)
 
-# ifdef HAVE_XIOS
+#  ifdef HAVE_XIOS
     ! add XIOS group for comm splitting
     IF (USE_XIOS) THEN
       ! Query handshake group label from xios
@@ -328,9 +328,9 @@ CONTAINS
       XIOS_GROUP_IDX = NUM_GROUPS
       GROUP_NAMES(XIOS_GROUP_IDX) = XIOS_LABEL
     END IF
-# endif
+#  endif
 
-# ifdef HAVE_YAC
+#  ifdef HAVE_YAC
     ! add YAC group for comm splitting
     IF (USE_YAC) THEN
       ! Query mpi_handshake group label from coupler
@@ -340,7 +340,7 @@ CONTAINS
       COUPLER_GROUP_IDX = NUM_GROUPS
       GROUP_NAMES(COUPLER_GROUP_IDX) = COUPLER_LABEL
     END IF
-# endif
+#  endif
 
   IF (NUM_GROUPS > MAX_NUM_GROUPS) THEN
     WRITE( Message,'(A)') 'Too many communication groups defined.'
@@ -372,21 +372,21 @@ ParEnv % MyPE,ELMER_COMM_WORLD,ierr)
 ! Must HAVE_XIOS and xios_config_file present
 #ifdef HAVE_XIOS
     IF (USE_XIOS) THEN
-      WRITE( Message,'(A,A)') &
-        "Using XIOS with config-file:", &
-        TRIM(xios_config_file)
+        WRITE( Message,'(A,A)') &
+          "Using XIOS with config-file:", &
+          TRIM(xios_config_file)
 
-      CALL INFO("SparIterComm",Message,Level=25)
-      CALL SetExecID()
-# ifdef ELMER_USE_MPI_HANDSHAKE
+        CALL INFO("SparIterComm",Message,Level=25)
+        CALL SetExecID()
+#        ifdef ELMER_USE_MPI_HANDSHAKE
         CALL xios_initialize( &
               TRIM(ExecID), &
               global_comm=GROUP_COMMS(XIOS_GROUP_IDX))
-# else
+#        else
         CALL xios_initialize( &
               TRIM(ExecID), &
               return_comm=ELMER_COMM_WORLD)
-# endif
+#        endif
     END IF
 #endif
 
@@ -397,10 +397,15 @@ ParEnv % MyPE,ELMER_COMM_WORLD,ierr)
       WRITE(Message,'(A,A)') &
         "Using YAC coupler with config-file:", &
         TRIM(yac_config_file)
+
       CALL INFO("SparIterComm",Message,Level=25)
-      CALL coupling_init(TRIM(yac_config_file), ELMER_COMM_WORLD, GROUP_COMMS(COUPLER_GROUP_IDX))
+      ! TODO: Refactor to also provide GROUP_NAMES(XIOS_GROUP_IDX) here
+      ! CALL coupling_init(yac_config_file, ELMER_COMM_WORLD,&
+      ! GROUP_COMMS(COUPLER_GROUP_IDX), GROUP_NAMES(ELMER_GROUP_IDX))
+      CALL coupling_init(TRIM(yac_config_file), ELMER_COMM_WORLD,&
+      GROUP_COMMS(COUPLER_GROUP_IDX))
     END IF
-#endif    
+#endif
     
     ParEnv % ActiveComm = ELMER_COMM_WORLD
 
@@ -2272,7 +2277,7 @@ tstart = realtime()
                  parentnodes(i,2) = l 
                  ! This is the list of PEs sharing parent node 2:
                  list2 => Mesh % ParallelInfo % NeighbourList(l) % Neighbours
-              END IF         
+              END IF
            END DO
         END DO
         !
@@ -4444,7 +4449,7 @@ tt = realTime()
       END DO
 !print*,parenv % mype, ' <<<<-----', sproc, realtime()-tt; flush(6)
       DEALLOCATE( Gindices )
-    END IF 
+    END IF
   END DO
 
 !print*,parenv % mype, 'first recv: ', realTime()-tt
