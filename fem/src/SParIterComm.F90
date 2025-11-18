@@ -294,7 +294,7 @@ GROUP_NAMES(ELMER_GROUP_IDX) = TRIM(ExecID)
       NUM_GROUPS = NUM_GROUPS + 1
       XIOS_GROUP_IDX = NUM_GROUPS
       GROUP_NAMES(XIOS_GROUP_IDX) = XIOS_LABEL
-    ENDIF
+    END IF
 #endif
 
 #ifdef HAVE_YAC
@@ -306,13 +306,13 @@ GROUP_NAMES(ELMER_GROUP_IDX) = TRIM(ExecID)
       NUM_GROUPS = NUM_GROUPS + 1
       COUPLER_GROUP_IDX = NUM_GROUPS
       GROUP_NAMES(COUPLER_GROUP_IDX) = COUPLER_LABEL
-    ENDIF
+    END IF
 #endif
 
 IF (NUM_GROUPS > MAX_NUM_GROUPS) THEN
     WRITE( Message, * ) 'Too many communication groups defined.'
     CALL Fatal( 'ParCommInit', Message )
-ENDIF
+END IF
 
 ! Do comm splitting using handshake
 CALL mpi_handshake(MPI_COMM_WORLD, GROUP_NAMES(1:NUM_GROUPS), GROUP_COMMS(1:NUM_GROUPS))
@@ -337,7 +337,7 @@ ELMER_COMM_WORLD = GROUP_COMMS(ELMER_GROUP_IDX)  ! Set ELMER_COMM_WORLD determin
   ! TODO potential incompatibility with MPI_Handshake
       CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,ELMER_COLOUR,&
            ParEnv % MyPE,ELMER_COMM_WORLD,ierr) 
-    ENDIF
+    END IF
 #else
     ! The colour could be set to be some different if we want to couple ElmerSolver with some other
     ! software having MPI colour set to zero. 
@@ -952,7 +952,7 @@ CONTAINS
         ELSE
           parentnodes(i,1) =  q
           parentnodes(i,2) =  p
-        ENDIF
+        END IF
 
         ! This is the list of PEs sharing parent node 1:
         list1 => nb(parentnodes(i,1)) % Neighbours
@@ -5091,12 +5091,12 @@ SUBROUTINE ParEnvFinalize()
     CALL coupling_finalize()
   END IF
 #endif
-  
+
 #ifdef HAVE_XIOS
   IF (USE_XIOS) THEN
     CALL xios_context_finalize()
     CALL xios_finalize()
-  ENDIF
+  END IF
 #endif
 
   IF (.NOT. ParEnv % ExternalInit) THEN
