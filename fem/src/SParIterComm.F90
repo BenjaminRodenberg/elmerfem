@@ -49,8 +49,10 @@ MODULE SParIterComm
   USE LoadMod, ONLY : RealTime
   USE SParIterGlobals
 
-#ifdef HAVE_XIOS
-  USE XIOS, ONLY: xios_initialize, xios_context_finalize, xios_finalize
+! always use mpi_handshake if YAC is involved; if only XIOS is used, use
+! mpi_handshake if XIOS requires it
+#if defined(HAVE_YAC) || (defined(HAVE_XIOS) && defined(XIOS_HAS_MPI_HANDSHAKE))
+#  define ELMER_USE_MPI_HANDSHAKE
 #endif
 
 #ifndef HAVE_PARMMG
@@ -59,29 +61,54 @@ MODULE SParIterComm
 #  endif
 #endif
 
-#ifdef HAVE_YAC
+#ifdef ELMER_USE_MPI_HANDSHAKE
+  ! do some compatibility checks first
+#  ifdef ELMER_COLOUR
+#    error "It looks like you are trying to use ELMER_COLOUR and mpi_handshake"
+#    error "at the same time. These features are incompatible. Please review"
+#    error "your configuration and dependencies."
+#  endif
+
+#  if defined(HAVE_XIOS) && !defined(XIOS_HAS_MPI_HANDSHAKE)
+#    error "XIOS does not offer the MPI Handshake API (XIOS_HAS_MPI_HANDSHAKE"
+#    error "unset) is not defined, but ELMER_USE_MPI_HANDSHAKE is set."
+#    error "This is incompatible with YAC."
+#  endif
+
+  ! import APIs to get code_id / global_id if needed
+# ifdef HAVE_YAC
   USE elmer_coupling, ONLY: coupler_get_code_id
-#endif
+# endif
 
-#ifdef HAVE_XIOS
+# ifdef HAVE_XIOS
   USE XIOS, ONLY: xios_get_global_id
-#endif
+# endif
 
-#ifdef HAVE_YAC
+  ! import mpi_handshake from YAC or XIOS or use fallback (should not happen)
+# ifdef HAVE_YAC
   ! prefer mpi_handshake from YAC if HAVE_YAC
-  USE elmer_coupling, ONLY: coupling_init, coupling_finalize, coupling_setup, &
-                    mpi_handshake, MAX_GROUPNAME_LEN
-#elif HAVE_XIOS
+  USE elmer_coupling, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
+# elif HAVE_XIOS
   ! use mpi_handshake from XIOS if only HAVE_XIOS used without HAVE_YAC
   USE XIOS, ONLY: mpi_handshake => xios_mpi_handshake, &
               MAX_GROUPNAME_LEN => xios_MAX_GROUPNAME_LEN
-#elif defined(ELMER_HAVE_MPI_MODULE)
+# elif defined(ELMER_HAVE_MPI_MODULE)
   ! If YAC is not used, use the mpi_handshake from mo_mpi_handshake.F90
   ! TODO: temporary solution for the sake of completeness
   USE mo_mpi_handshake, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
-#else
+# else
   ! If no MPI is present use a stub
   USE mo_mpi_handshake_stub, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
+# endif
+
+#endif
+
+#ifdef HAVE_YAC
+  USE elmer_coupling, ONLY: coupling_init, coupling_finalize, coupling_setup
+#endif
+
+#ifdef HAVE_XIOS
+  USE XIOS, ONLY: xios_initialize, xios_context_finalize, xios_finalize
 #endif
 
   IMPLICIT NONE
