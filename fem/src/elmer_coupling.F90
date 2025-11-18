@@ -286,6 +286,8 @@ MODULE elmer_coupling
   INTEGER, PARAMETER, PRIVATE :: MAX_CHARLEN = 132
   INTEGER, PARAMETER, PUBLIC :: MAX_GROUPNAME_LEN = MAX_CHARLEN
 
+  ! TODO: Allow to set component name from outside
+  ! CHARACTER(LEN=MAX_CHARLEN) :: ELMER_COMP_NAME
   ! to make sure to have a single YAML file in case of multiple Elmer/Ice domains
   CHARACTER(LEN=MAX_CHARLEN), PARAMETER :: ELMER_COMP_NAME = "elmerice"
   CHARACTER(LEN=MAX_CHARLEN), PARAMETER :: ELMER_GRID_NAME = "elmer_grid"
@@ -315,6 +317,8 @@ CONTAINS
 #endif
   END SUBROUTINE coupler_get_code_id
 
+  ! TODO: Refactor to also accept comp_name here
+  ! SUBROUTINE coupling_init(coupling_config_file, elmer_comm, yac_comm, comp_name)
   SUBROUTINE coupling_init(coupling_config_file, elmer_comm, yac_comm)
 
     IMPLICIT NONE
@@ -323,6 +327,7 @@ CONTAINS
     INTEGER, INTENT(IN) :: elmer_comm
     INTEGER, INTENT(IN) :: yac_comm
 
+    ! CHARACTER(LEN=MAX_GROUPNAME_LEN), INTENT(IN) :: comp_name
 
     INTEGER :: ierror
 
@@ -345,6 +350,8 @@ CONTAINS
 
     ! define component
     ! * is collective operation for all processes that initialised YAC
+    ! TODO: Allow to set component name from outside; currently hard-coded
+    ! ELMER_COMP_NAME = comp_name
     CALL yac_fdef_comp(ELMER_COMP_NAME, comp_id)
 
     ! get number of ranks for the elmer component
