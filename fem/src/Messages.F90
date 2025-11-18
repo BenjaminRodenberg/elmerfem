@@ -74,13 +74,8 @@ MODULE Messages
    
    INTEGER, PARAMETER :: EXIT_OK=0, EXIT_ERROR=1
 
-#ifdef HAVE_XIOS
    LOGICAL :: USE_XIOS = .FALSE. 
-#endif 
-
-#ifdef HAVE_YAC
    LOGICAL :: USE_YAC = .FALSE.
-#endif   
 
 CONTAINS
 
