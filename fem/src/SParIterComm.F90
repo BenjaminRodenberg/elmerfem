@@ -350,7 +350,7 @@ GROUP_NAMES(ELMER_GROUP_IDX) = TRIM(ExecID)
 #endif
 
 IF (NUM_GROUPS > MAX_NUM_GROUPS) THEN
-    WRITE( Message, * ) 'Too many communication groups defined.'
+    WRITE( Message,'(A)') 'Too many communication groups defined.'
     CALL Fatal( 'ParCommInit', Message )
 END IF
 
