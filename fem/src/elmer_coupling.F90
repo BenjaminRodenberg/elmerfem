@@ -357,7 +357,7 @@ CONTAINS
   SUBROUTINE coupling_setup(grid_dir, num_parts, timestepstring)
 
     USE :: elmer_icon_coupling
-    USE, INTRINSIC :: iso_c_binding
+    USE, INTRINSIC :: iso_c_binding, ONLY: C_INT, C_DOUBLE, C_PTR, C_F_POINTER, C_NULL_CHAR
 
     IMPLICIT NONE
 
@@ -425,7 +425,7 @@ CONTAINS
 
       SUBROUTINE free_c ( ptr ) bind ( c, NAME='free' )
 
-       USE, INTRINSIC :: iso_c_binding
+       USE, INTRINSIC :: iso_c_binding, ONLY: C_PTR
 
        TYPE(C_PTR), VALUE :: ptr
 
