@@ -75,16 +75,18 @@ MODULE SParIterComm
 #    error "This is incompatible with YAC."
 #  endif
 
-  ! import mpi_handshake from YAC or XIOS
 # ifdef HAVE_XIOS
-    USE XIOS, ONLY: xios_get_global_id
+  USE XIOS, ONLY: xios_get_global_id
+# endif
 
-    ! prefer mpi_handshake from XIOS if XIOS is used
-    USE XIOS, ONLY: mpi_handshake => xios_mpi_handshake, &
-                MAX_GROUPNAME_LEN => xios_MAX_GROUPNAME_LEN
+  ! import mpi_handshake from YAC or XIOS
+# ifdef HAVE_YAC
+  ! prefer mpi_handshake from YAC if HAVE_YAC
+  USE elmer_coupling, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
 # else
-    ! use mpi_handshake from YAC if only HAVE_YAC used without HAVE_XIOS
-    USE elmer_coupling, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
+  ! use mpi_handshake from XIOS if only HAVE_XIOS used without HAVE_YAC
+  USE XIOS, ONLY: mpi_handshake => xios_mpi_handshake, &
+              MAX_GROUPNAME_LEN => xios_MAX_GROUPNAME_LEN
 # endif
 #endif
 
