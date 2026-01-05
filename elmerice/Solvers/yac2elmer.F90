@@ -49,8 +49,16 @@ SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
       CALL INFO(SolverName,Message,Level=3)
     END IF
 
+    ! TODO:
+    ! DIM = ThisMesh % MeshDim
+    ! IF (DIM == 2) THEN  ! SSE
+    !   GatherBulkData(...)  ! from YacData.F90
+    ! ELSEIF (DIM == 3) THEN  ! Stokes
+    !   GatherBoundaryData(...)  ! from YacData.F90
+    ! END IF
+
     !CALL coupling_setup(TRIM(grid_dir), elmer_mesh_partitions, "1")
-    CALL coupling_setup(TRIM(grid_dir), elmer_mesh_partitions, TRIM(model_tstep))
+    CALL coupling_setup(TRIM(grid_dir), elmer_mesh_partitions, TRIM(model_tstep))  ! TODO: Replace TRIM(grid_dir) with grid data from Gather...Data subroutines
 
 
     ! setting up Elmer-side variables for receiving YAC variables
