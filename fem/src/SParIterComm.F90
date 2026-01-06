@@ -90,7 +90,8 @@ MODULE SParIterComm
                 MAX_GROUPNAME_LEN => xios_MAX_GROUPNAME_LEN
 # elif defined(HAVE_YAC)
     ! use mpi_handshake from YAC if only HAVE_YAC used without HAVE_XIOS
-    USE elmer_coupling, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
+    USE elmer_coupling, ONLY: mpi_handshake => elmer_coupling_mpi_handshake, &
+                          MAX_GROUPNAME_LEN => elmer_coupling_MAX_GROUPNAME_LEN
 # else
 #   error "ELMER_USE_MPI_HANDSHAKE defined without HAVE_YAC or HAVE_XIOS"
 # endif
