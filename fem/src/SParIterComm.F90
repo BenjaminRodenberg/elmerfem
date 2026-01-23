@@ -75,29 +75,35 @@ MODULE SParIterComm
 #    error "This is incompatible with YAC."
 #  endif
 
-  ! import mpi_handshake from YAC or XIOS
-# ifdef HAVE_XIOS
-    USE XIOS, ONLY: xios_get_global_id
-
-    ! prefer mpi_handshake from XIOS if XIOS is used
-    USE XIOS, ONLY: mpi_handshake => xios_mpi_handshake, &
-                MAX_GROUPNAME_LEN => xios_MAX_GROUPNAME_LEN
-# else
-    ! use mpi_handshake from YAC if only HAVE_YAC used without HAVE_XIOS
-    USE elmer_coupling, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
+  ! import APIs to get code_id / global_id if needed
+# ifdef HAVE_YAC
+  USE elmer_coupling, ONLY: coupler_get_code_id
 # endif
+
+# ifdef HAVE_XIOS
+  USE XIOS, ONLY: xios_get_global_id
+# endif
+
+  ! import mpi_handshake from YAC or XIOS
+# ifdef HAVE_YAC
+  ! prefer mpi_handshake from YAC if HAVE_YAC
+  USE elmer_coupling, ONLY: mpi_handshake, MAX_GROUPNAME_LEN
+# elif defined(HAVE_XIOS)
+#   error "The mpi_handshake implementation in XIOS currently has a bug."
+  ! use mpi_handshake from XIOS if only HAVE_XIOS used without HAVE_YAC
+  USE XIOS, ONLY: mpi_handshake => xios_mpi_handshake, &
+              MAX_GROUPNAME_LEN => xios_MAX_GROUPNAME_LEN
+# else
+#   error "ELMER_USE_MPI_HANDSHAKE defined without HAVE_YAC or HAVE_XIOS"
+# endif
+#endif
+
+#ifdef HAVE_YAC
+  USE elmer_coupling, ONLY: coupling_init, coupling_finalize, coupling_setup
 #endif
 
 #ifdef HAVE_XIOS
   USE XIOS, ONLY: xios_initialize, xios_context_finalize, xios_finalize
-#endif
-
-#ifdef HAVE_YAC
-  USE elmer_coupling, ONLY: &
-       coupling_init, &
-       coupling_finalize, &
-       coupling_setup, &
-       coupler_get_code_id
 #endif
 
   IMPLICIT NONE

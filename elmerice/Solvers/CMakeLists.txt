@@ -152,17 +152,19 @@ IF(NOT(WIN32))
 ENDIF()
 TARGET_LINK_LIBRARIES(ElmerIceSolvers Elmer::MPI_Fortran elmersolver ElmerIceUtils)
 
+# XIOS depends on NetCDF and (optionally) HDF5 and has to be added first
+IF(HAVE_XIOS)
+  INCLUDE_DIRECTORIES(${XIOS_INCLUDE_DIR})
+  TARGET_LINK_LIBRARIES(ElmerIceSolvers ${XIOS_LIBRARIES})
+ENDIF()
+
+# NetCDF depends on HDF5 and has to be added before HDF5
 IF(HAVE_NETCDF)
   TARGET_LINK_LIBRARIES(ElmerIceSolvers ${NETCDF_LIBRARIES})
 ENDIF()
 
 IF(HAVE_HDF5)
   TARGET_LINK_LIBRARIES(ElmerIceSolvers ${PHDF5_LIBRARIES})
-ENDIF()
-
-IF(HAVE_XIOS)
-  INCLUDE_DIRECTORIES(${XIOS_INCLUDE_DIR})
-  TARGET_LINK_LIBRARIES(ElmerIceSolvers ${XIOS_LIBRARIES})
 ENDIF()
 
 # IF(HAVE_MMG)
