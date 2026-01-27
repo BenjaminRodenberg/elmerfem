@@ -742,7 +742,7 @@ CONTAINS
 
     INTERFACE
 
-      SUBROUTINE read_grid_c(grid_dir, rank, size, num_parts, &
+      SUBROUTINE read_grid_c(grid_dir, rank, size, &
                              nbr_vertices, nbr_cells, num_vertices_per_cell, &
                              cell_ids, vertex_ids, cell_to_vertex) &
         bind ( C, name='read_grid' )
@@ -752,7 +752,6 @@ CONTAINS
         CHARACTER(KIND=C_CHAR) :: grid_dir(*)
         INTEGER(KIND=C_INT), VALUE, INTENT(IN)  :: rank
         INTEGER(KIND=C_INT), VALUE, INTENT(IN)  :: size
-        INTEGER(KIND=C_INT), VALUE, INTENT(IN)  :: num_parts
         INTEGER(KIND=C_INT), VALUE, INTENT(IN)  :: nbr_vertices
         INTEGER(KIND=C_INT), VALUE, INTENT(IN)  :: nbr_cells
         TYPE(C_PTR)               , INTENT(OUT) :: num_vertices_per_cell ! int **
@@ -832,8 +831,12 @@ CONTAINS
       cell_ids(i) = element % GElementIndex
     END DO
 
+    ! Review comm_rank, comm_size, num_parts.
+    ! comm_rank -> ParEnv % MyPE
+    ! comm_size -> ParEnv % PEs
+
     CALL read_grid_c( &
-      TRIM(grid_dir) // c_null_char, comm_rank, comm_size, num_parts, &
+      TRIM(grid_dir) // c_null_char, comm_rank, comm_size, &
       nbr_vertices, nbr_cells, num_vertices_per_cell_c_ptr, &
       cell_ids, vertex_ids, cell_to_vertex_c_ptr)
 
