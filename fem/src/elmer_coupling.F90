@@ -699,16 +699,19 @@ CONTAINS
   END SUBROUTINE coupling_init
 
   SUBROUTINE coupling_setup(grid, num_parts, timestepstring)
+    USE DefUtils, ONLY: ParEnv
 
     USE :: elmer_ebfm_coupling
     USE :: elmer_icon_coupling
     USE, INTRINSIC :: iso_c_binding, ONLY: C_INT, C_DOUBLE, C_PTR, C_F_POINTER, C_NULL_CHAR
 
-    USE :: Types, ONLY: Mesh_t, dp
+    USE :: Types, ONLY: Mesh_t, Element_t, dp
 
     IMPLICIT NONE
 
+    INTEGER :: i
     TYPE(Mesh_t), POINTER, INTENT(IN) :: grid
+    TYPE(Element_t), POINTER :: element
     CHARACTER(LEN=*), INTENT(IN) :: timestepstring
     INTEGER, INTENT(IN) :: num_parts
 
@@ -719,13 +722,10 @@ CONTAINS
     INTEGER(KIND=C_INT) :: nbr_vertices
     INTEGER(KIND=C_INT) :: nbr_cells
     TYPE(C_PTR)         :: num_vertices_per_cell_c_ptr ! int **
-    TYPE(C_PTR)         :: cell_ids_c_ptr ! int **
-    TYPE(C_PTR)         :: vertex_ids_c_ptr ! int **
     TYPE(C_PTR)         :: cell_to_vertex_c_ptr ! int **
 
     INTEGER(KIND=C_INT), POINTER :: num_vertices_per_cell_c(:)
     INTEGER(KIND=C_INT), POINTER :: cell_ids_c(:)
-    INTEGER(KIND=C_INT), POINTER :: vertex_ids_c(:)
     INTEGER(KIND=C_INT), POINTER :: cell_to_vertex_c(:)
 
     REAL(KIND=dp), ALLOCATABLE :: x_lonlat(:)
@@ -747,18 +747,18 @@ CONTAINS
                              cell_ids, vertex_ids, cell_to_vertex) &
         bind ( C, name='read_grid' )
 
-        USE, INTRINSIC :: iso_c_binding
+        USE, INTRINSIC :: iso_c_binding, ONLY: C_INT, C_DOUBLE, C_PTR, C_CHAR
 
         CHARACTER(KIND=C_CHAR) :: grid_dir(*)
-        INTEGER(KIND=C_INT), VALUE :: rank
-        INTEGER(KIND=C_INT), VALUE :: size
-        INTEGER(KIND=C_INT), VALUE :: num_parts
-        INTEGER(KIND=C_INT)        :: nbr_vertices
-        INTEGER(KIND=C_INT)        :: nbr_cells
-        TYPE(C_PTR)                :: num_vertices_per_cell ! int **
-        TYPE(C_PTR)                :: cell_ids ! int **
-        TYPE(C_PTR)                :: vertex_ids ! int **
-        TYPE(C_PTR)                :: cell_to_vertex ! int **
+        INTEGER(KIND=C_INT), VALUE, INTENT(IN)  :: rank
+        INTEGER(KIND=C_INT), VALUE, INTENT(IN)  :: size
+        INTEGER(KIND=C_INT), VALUE, INTENT(IN)  :: num_parts
+        INTEGER(KIND=C_INT), VALUE, INTENT(IN)  :: nbr_vertices
+        INTEGER(KIND=C_INT), VALUE, INTENT(IN)  :: nbr_cells
+        TYPE(C_PTR)               , INTENT(OUT) :: num_vertices_per_cell ! int **
+        INTEGER(KIND=C_INT)       , INTENT(IN)  :: cell_ids(*)
+        INTEGER(KIND=C_INT)       , INTENT(IN)  :: vertex_ids(*)
+        TYPE(C_PTR)               , INTENT(OUT) :: cell_to_vertex ! int **
 
       END SUBROUTINE read_grid_c
 
@@ -814,28 +814,35 @@ CONTAINS
     PRINT *, "COMM_RANK", comm_rank
     PRINT *, "COMM_SIZE", comm_size
     PRINT *, "NUMPARTS", num_parts
+
+    nbr_vertices = grid % NumberOfNodes
+    ALLOCATE(vertex_ids(nbr_vertices))
+    DO i=1, nbr_vertices
+      IF(ParEnv % PEs > 1) THEN
+        vertex_ids(i) = grid % ParallelInfo % GlobalDofs(i)
+      ELSE
+        vertex_ids(i) = i
+      END IF
+    END DO
+
+    nbr_cells = grid % NumberOfBulkElements
+    ALLOCATE(cell_ids(nbr_cells))
+    DO i=1, nbr_cells
+      element => grid % Elements(i)
+      cell_ids(i) = element % GElementIndex
+    END DO
+
     CALL read_grid_c( &
       TRIM(grid_dir) // c_null_char, comm_rank, comm_size, num_parts, &
       nbr_vertices, nbr_cells, num_vertices_per_cell_c_ptr, &
-      cell_ids_c_ptr, vertex_ids_c_ptr, cell_to_vertex_c_ptr)
+      cell_ids, vertex_ids, cell_to_vertex_c_ptr)
 
     CALL C_F_POINTER( &
       num_vertices_per_cell_c_ptr, num_vertices_per_cell_c, shape=[nbr_cells])
     CALL C_F_POINTER( &
       cell_to_vertex_c_ptr, cell_to_vertex_c, shape=[SUM(num_vertices_per_cell_c)])
 
-    CALL C_F_POINTER(cell_ids_c_ptr, cell_ids_c, shape=[nbr_cells])
-    CALL C_F_POINTER(vertex_ids_c_ptr, vertex_ids_c, shape=[nbr_vertices])
-
     num_vertices_per_cell = num_vertices_per_cell_c
-    cell_ids = cell_ids_c
-    vertex_ids = vertex_ids_c
-
-    CALL free_c(cell_ids_c_ptr)
-    CALL free_c(vertex_ids_c_ptr)
-
-    nbr_vertices = grid % NumberOfNodes
-    nbr_cells = grid % NumberOfBulkElements
 
     ALLOCATE(x_lonlat(nbr_vertices))
     ALLOCATE(y_lonlat(nbr_vertices))
@@ -865,7 +872,7 @@ CONTAINS
     ! register Elmer grid in YAC
     ! * is defined as an unstructured grid
     PRINT *, "BEFORE GRID DEF"
-    
+
     CALL yac_fdef_grid( &
       ELMER_GRID_NAME, nbr_vertices, nbr_cells, SUM(num_vertices_per_cell), &
       num_vertices_per_cell, x_vertices, y_vertices, cell_to_vertex, grid_id)

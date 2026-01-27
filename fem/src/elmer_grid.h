@@ -35,8 +35,8 @@
 
 void read_grid(
   char const * grid_dir, int rank, int size, int num_parts,
-  int * nbr_vertices, int * nbr_cells, int ** num_vertices_per_cell,
-  int ** cell_ids, int ** vertex_ids, int ** cell_to_vertex);
+  int nbr_vertices, int nbr_cells, int ** num_vertices_per_cell,
+  const int * cell_ids, const int * vertex_ids, int ** cell_to_vertex);
 
 void convert2rad(
   double * x_vertices, double * y_vertices, const int nbr_vertices);

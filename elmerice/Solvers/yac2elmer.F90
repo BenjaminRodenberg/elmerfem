@@ -1,5 +1,5 @@
 SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
-  USE DefUtils
+  USE DefUtils, ONLY: ParEnv, GetSolverParams, GetString, GetMesh, GetNOFActive, DefaultVariableAdd
   USE SolverUtils
   USE elmer_coupling
   USE elmer_ebfm_coupling
