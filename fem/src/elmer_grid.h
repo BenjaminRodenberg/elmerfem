@@ -36,8 +36,14 @@
 void read_grid(
   char const * grid_dir, int rank, int size, int num_parts,
   int * nbr_vertices, int * nbr_cells, int ** num_vertices_per_cell,
-  double ** x_vertices, double ** y_vertices,
-  double ** x_cells, double ** y_cells,
   int ** cell_ids, int ** vertex_ids, int ** cell_to_vertex);
+
+void convert2rad(
+  double * x_vertices, double * y_vertices, const int nbr_vertices);
+
+void compute_cell_centers(
+  int nbr_cells, int * cell_to_vertex, const int * num_vertices_per_cell,
+  const double * x_vertices, const double * y_vertices,
+  double * x_cells, double * y_cells);
 
 #endif // ELMER_GRID_H

@@ -52,32 +52,6 @@ static int compare_glb2loc_glb (const void * a, const void * b) {
   return ((struct glb2loc*)a)->global_id - ((struct glb2loc*)b)->global_id;
 }
 
-// TODO: try to remove. Currently needed by _compute_cell_centers
-static void _convert2rad(
-  double * x_vertices, double * y_vertices, int nbr_vertices) {
-
-  // define transformation
-  PJ * P =
-    proj_create_crs_to_crs(
-      PJ_DEFAULT_CTX, "EPSG:3413", "+proj=longlat +datum=WGS84", NULL);
-
-  if (!P) {
-    fputs("failed to create transformation", stderr);
-    MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
-  }
-
-  // transform all vertices
-  for (int i = 0; i < nbr_vertices; ++i) {
-    PJ_COORD src_coord = proj_coord(x_vertices[i], y_vertices[i], 0, 0);
-    PJ_COORD tgt_coord = proj_trans(P, PJ_FWD, src_coord);
-    x_vertices[i] = proj_torad(tgt_coord.lp.lam);
-    y_vertices[i] = proj_torad(tgt_coord.lp.phi);
-  }
-
-  // clean up
-  proj_destroy(P);
-}
-
 void convert2rad(
   double * x_vertices, double * y_vertices, const int nbr_vertices) {
   // define transformation
@@ -105,8 +79,6 @@ void convert2rad(
 void read_grid(
   char const * grid_dir, int rank, int size, int num_parts,
   int * nbr_vertices, int * nbr_cells, int ** num_vertices_per_cell,
-  double ** x_vertices, double ** y_vertices,
-  double ** x_cells, double ** y_cells,
   int ** cell_ids, int ** vertex_ids, int ** cell_to_vertex) {
 
   enum {NUM_VERT_PER_CELL = 3};
@@ -114,8 +86,6 @@ void read_grid(
   *nbr_vertices = 0;
   *nbr_cells = 0;
   *num_vertices_per_cell = NULL;
-  *x_vertices = NULL;
-  *y_vertices = NULL;
   *cell_ids = NULL;
   *vertex_ids = NULL;
   *cell_to_vertex = NULL;
@@ -171,15 +141,7 @@ void read_grid(
       header_file, "%d%d%d",
       &part_nbr_vertices, &part_nbr_cells, &part_nbr_edges);
 
-    // allocate arrays for nodes
-    *x_vertices =
-      realloc(
-        *x_vertices,
-        (size_t)(*nbr_vertices + part_nbr_vertices) * sizeof(**x_vertices));
-    *y_vertices =
-      realloc(
-        *y_vertices,
-        (size_t)(*nbr_vertices + part_nbr_vertices) * sizeof(**y_vertices));
+    // allocate arrays for ids
     *vertex_ids =
       realloc(
         *vertex_ids,
@@ -192,11 +154,12 @@ void read_grid(
     // read node data
     for (int i = 0, j = *nbr_vertices; i < part_nbr_vertices; ++i, ++j) {
       int dummy;
+      double x_dummy, y_dummy, z_dummy;
       double z_vertices;
       fscanf(
         nodes_file, "%d%d%lf%lf%lf\n",
         (*vertex_ids) + j, &dummy,
-        (*x_vertices) + j, *y_vertices + j, &z_vertices);
+        &x_dummy, &y_dummy, &z_dummy);
       glb2loc_vert[j].global_id = (*vertex_ids)[j];
       glb2loc_vert[j].local_id = j;
     }
@@ -271,16 +234,6 @@ void read_grid(
   
   free(glb2loc_cell_vert);
   free(glb2loc_vert);
-
-  // convert coordiantes to radian
-  _convert2rad(*x_vertices, *y_vertices, *nbr_vertices);
-
-  // compute cell centers from vertex coordiantes
-  *x_cells = malloc(*nbr_cells * sizeof(**x_cells));
-  *y_cells = malloc(*nbr_cells * sizeof(**y_cells));
-  _compute_cell_centers(
-    *nbr_cells, *cell_to_vertex, *num_vertices_per_cell,
-    *x_vertices, *y_vertices, *x_cells, *y_cells);
 }
 
 static inline void LLtoXYZ(double lon, double lat, double p_out[]) {
@@ -311,8 +264,12 @@ static inline void normalise_vector(double v[]) {
 
 void compute_cell_centers(
   int nbr_cells, int * cell_to_vertex, const int * num_vertices_per_cell,
-  const double * x_vertices, const double * y_vertices) {
+  const double * x_vertices, const double * y_vertices,
+  double * x_cells, double * y_cells) {
 
+  _compute_cell_centers(
+    nbr_cells, cell_to_vertex, num_vertices_per_cell,
+    x_vertices, y_vertices, x_cells, y_cells);
 }
 
 static void _compute_cell_centers(

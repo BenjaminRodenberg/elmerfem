@@ -719,31 +719,23 @@ CONTAINS
     INTEGER(KIND=C_INT) :: nbr_vertices
     INTEGER(KIND=C_INT) :: nbr_cells
     TYPE(C_PTR)         :: num_vertices_per_cell_c_ptr ! int **
-    TYPE(C_PTR)         :: x_vertices_c_ptr ! double **
-    TYPE(C_PTR)         :: y_vertices_c_ptr ! double **
-    TYPE(C_PTR)         :: x_cells_c_ptr ! double **
-    TYPE(C_PTR)         :: y_cells_c_ptr ! double **
     TYPE(C_PTR)         :: cell_ids_c_ptr ! int **
     TYPE(C_PTR)         :: vertex_ids_c_ptr ! int **
     TYPE(C_PTR)         :: cell_to_vertex_c_ptr ! int **
 
     INTEGER(KIND=C_INT), POINTER :: num_vertices_per_cell_c(:)
-    REAL(KIND=C_DOUBLE), POINTER :: x_vertices_c(:)
-    REAL(KIND=C_DOUBLE), POINTER :: y_vertices_c(:)
-    REAL(KIND=C_DOUBLE), POINTER :: x_cells_c(:)
-    REAL(KIND=C_DOUBLE), POINTER :: y_cells_c(:)
     INTEGER(KIND=C_INT), POINTER :: cell_ids_c(:)
     INTEGER(KIND=C_INT), POINTER :: vertex_ids_c(:)
     INTEGER(KIND=C_INT), POINTER :: cell_to_vertex_c(:)
 
     REAL(KIND=dp), ALLOCATABLE :: x_lonlat(:)
     REAL(KIND=dp), ALLOCATABLE :: y_lonlat(:)
+    REAL(KIND=dp), ALLOCATABLE :: x_cells(:)
+    REAL(KIND=dp), ALLOCATABLE :: y_cells(:)
 
     INTEGER, ALLOCATABLE          :: num_vertices_per_cell(:)
     DOUBLE PRECISION, ALLOCATABLE :: x_vertices(:)
     DOUBLE PRECISION, ALLOCATABLE :: y_vertices(:)
-    DOUBLE PRECISION, ALLOCATABLE :: x_cells(:)
-    DOUBLE PRECISION, ALLOCATABLE :: y_cells(:)
     INTEGER, ALLOCATABLE          :: cell_ids(:)
     INTEGER, ALLOCATABLE          :: vertex_ids(:)
     INTEGER, ALLOCATABLE          :: cell_to_vertex(:)
@@ -752,7 +744,6 @@ CONTAINS
 
       SUBROUTINE read_grid_c(grid_dir, rank, size, num_parts, &
                              nbr_vertices, nbr_cells, num_vertices_per_cell, &
-                             x_vertices, y_vertices, x_cells, y_cells, &
                              cell_ids, vertex_ids, cell_to_vertex) &
         bind ( C, name='read_grid' )
 
@@ -765,10 +756,6 @@ CONTAINS
         INTEGER(KIND=C_INT)        :: nbr_vertices
         INTEGER(KIND=C_INT)        :: nbr_cells
         TYPE(C_PTR)                :: num_vertices_per_cell ! int **
-        TYPE(C_PTR)                :: x_vertices ! double **
-        TYPE(C_PTR)                :: y_vertices ! double **
-        TYPE(C_PTR)                :: x_cells ! double **
-        TYPE(C_PTR)                :: y_cells ! double **
         TYPE(C_PTR)                :: cell_ids ! int **
         TYPE(C_PTR)                :: vertex_ids ! int **
         TYPE(C_PTR)                :: cell_to_vertex ! int **
@@ -785,6 +772,24 @@ CONTAINS
         REAL(C_DOUBLE),             INTENT(INOUT) :: y_vertices(*)
 
       END SUBROUTINE convert2rad_c
+
+      SUBROUTINE compute_cell_centers_c(nbr_cells, cell_to_vertex, &
+                                        num_vertices_per_cell, &
+                                        x_vertices, y_vertices, &
+                                        x_cells, y_cells) &
+        bind ( C, name='compute_cell_centers' )
+
+        USE, INTRINSIC :: iso_c_binding, ONLY: C_INT, C_DOUBLE
+
+        INTEGER(KIND=C_INT), VALUE, INTENT(IN) :: nbr_cells
+        INTEGER(KIND=C_INT),        INTENT(IN) :: cell_to_vertex(*)
+        INTEGER(KIND=C_INT),        INTENT(IN) :: num_vertices_per_cell(*)
+        REAL(C_DOUBLE),             INTENT(IN) :: x_vertices(*)
+        REAL(C_DOUBLE),             INTENT(IN) :: y_vertices(*)
+        REAL(C_DOUBLE),          INTENT(INOUT) :: x_cells(*)
+        REAL(C_DOUBLE),          INTENT(INOUT) :: y_cells(*)
+
+      END SUBROUTINE compute_cell_centers_c
 
       SUBROUTINE free_c ( ptr ) bind ( c, NAME='free' )
 
@@ -812,67 +817,55 @@ CONTAINS
     CALL read_grid_c( &
       TRIM(grid_dir) // c_null_char, comm_rank, comm_size, num_parts, &
       nbr_vertices, nbr_cells, num_vertices_per_cell_c_ptr, &
-      x_vertices_c_ptr, y_vertices_c_ptr, x_cells_c_ptr, y_cells_c_ptr, &
       cell_ids_c_ptr, vertex_ids_c_ptr, cell_to_vertex_c_ptr)
 
-    ! TODO: Not needed anymore.
-    CALL C_F_POINTER(x_vertices_c_ptr, x_vertices_c, shape=[nbr_vertices])
-    CALL C_F_POINTER(y_vertices_c_ptr, y_vertices_c, shape=[nbr_vertices])
-    ! x_vertices = x_vertices_c
-    ! y_vertices = y_vertices_c
-    CALL free_c(x_vertices_c_ptr)
-    CALL free_c(y_vertices_c_ptr)
+    CALL C_F_POINTER( &
+      num_vertices_per_cell_c_ptr, num_vertices_per_cell_c, shape=[nbr_cells])
+    CALL C_F_POINTER( &
+      cell_to_vertex_c_ptr, cell_to_vertex_c, shape=[SUM(num_vertices_per_cell_c)])
 
-    PRINT *, "After READINF GRID FROM FILE"
+    CALL C_F_POINTER(cell_ids_c_ptr, cell_ids_c, shape=[nbr_cells])
+    CALL C_F_POINTER(vertex_ids_c_ptr, vertex_ids_c, shape=[nbr_vertices])
 
-    PRINT *, "CHECK: nbr_vertices", nbr_vertices, "==", grid % NumberOfNodes, "?"
+    num_vertices_per_cell = num_vertices_per_cell_c
+    cell_ids = cell_ids_c
+    vertex_ids = vertex_ids_c
 
-    ALLOCATE(x_lonlat(grid % NumberOfNodes))
-    x_lonlat = grid % Nodes % x
-    
-    ALLOCATE(y_lonlat(grid % NumberOfNodes))
-    y_lonlat = grid % Nodes % y
-    
+    CALL free_c(cell_ids_c_ptr)
+    CALL free_c(vertex_ids_c_ptr)
+
     nbr_vertices = grid % NumberOfNodes
+    nbr_cells = grid % NumberOfBulkElements
+
+    ALLOCATE(x_lonlat(nbr_vertices))
+    ALLOCATE(y_lonlat(nbr_vertices))
+    ALLOCATE(x_cells(nbr_cells))
+    ALLOCATE(y_cells(nbr_cells))
+
+    ! Copy input for conversion from Elmer internal grid
+    x_lonlat = grid % Nodes % x
+    y_lonlat = grid % Nodes % y
 
     CALL convert2rad_c(x_lonlat, y_lonlat, nbr_vertices)
+
+    ! Need C-type indexing inside compute_cell_centers for cell_to_vertex_c
+    CALL compute_cell_centers_c(nbr_cells, cell_to_vertex_c, num_vertices_per_cell_c, &
+      x_lonlat, y_lonlat, x_cells, y_cells)
 
     x_vertices = x_lonlat
     y_vertices = y_lonlat
 
-    PRINT *, "After READINF convert2rad_c"
-
-    CALL C_F_POINTER( &
-      num_vertices_per_cell_c_ptr, num_vertices_per_cell_c, shape=[nbr_cells])
-    CALL C_F_POINTER(x_cells_c_ptr, x_cells_c, shape=[nbr_cells])
-    CALL C_F_POINTER(y_cells_c_ptr, y_cells_c, shape=[nbr_cells])
-    CALL C_F_POINTER(cell_ids_c_ptr, cell_ids_c, shape=[nbr_cells])
-    CALL C_F_POINTER(vertex_ids_c_ptr, vertex_ids_c, shape=[nbr_vertices])
-    CALL C_F_POINTER( &
-      cell_to_vertex_c_ptr, cell_to_vertex_c, shape=[SUM(num_vertices_per_cell_c)])
-
-    num_vertices_per_cell = num_vertices_per_cell_c
-    x_cells = x_cells_c
-    y_cells = y_cells_c
-    cell_ids = cell_ids_c
-    vertex_ids = vertex_ids_c
+    ! Convert C-type indexing to F-type indexing
     cell_to_vertex = cell_to_vertex_c + 1
 
+    ! Free C-allocated memory after use
     CALL free_c(num_vertices_per_cell_c_ptr)
-    CALL free_c(x_cells_c_ptr)
-    CALL free_c(y_cells_c_ptr)
-    CALL free_c(cell_ids_c_ptr)
-    CALL free_c(vertex_ids_c_ptr)
     CALL free_c(cell_to_vertex_c_ptr)
-
 
     ! register Elmer grid in YAC
     ! * is defined as an unstructured grid
     PRINT *, "BEFORE GRID DEF"
-    PRINT *, "CHECK: nbr_cells", nbr_cells, "==", grid % NumberOfBulkElements, "?"
     
-    nbr_cells = grid % NumberOfBulkElements
-
     CALL yac_fdef_grid( &
       ELMER_GRID_NAME, nbr_vertices, nbr_cells, SUM(num_vertices_per_cell), &
       num_vertices_per_cell, x_vertices, y_vertices, cell_to_vertex, grid_id)
