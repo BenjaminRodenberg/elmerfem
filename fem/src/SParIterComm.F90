@@ -99,7 +99,7 @@ MODULE SParIterComm
 #endif
 
 #ifdef HAVE_YAC
-  USE elmer_coupling, ONLY: coupling_init, coupling_finalize, coupling_setup
+  USE elmer_coupling, ONLY: coupling_init, coupling_finalize
 #endif
 
 #ifdef HAVE_XIOS

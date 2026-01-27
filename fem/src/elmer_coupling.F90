@@ -698,19 +698,23 @@ CONTAINS
 
   END SUBROUTINE coupling_init
 
-  SUBROUTINE coupling_setup(grid_dir, num_parts, timestepstring)
+  SUBROUTINE coupling_setup(grid, num_parts, timestepstring)
 
     USE :: elmer_ebfm_coupling
     USE :: elmer_icon_coupling
     USE, INTRINSIC :: iso_c_binding, ONLY: C_INT, C_DOUBLE, C_PTR, C_F_POINTER, C_NULL_CHAR
 
+    USE :: Types, ONLY: Mesh_t, dp
+
     IMPLICIT NONE
 
-    CHARACTER(LEN=*), INTENT(IN) :: grid_dir
+    TYPE(Mesh_t), POINTER, INTENT(IN) :: grid
     CHARACTER(LEN=*), INTENT(IN) :: timestepstring
     INTEGER, INTENT(IN) :: num_parts
 
     INTEGER :: grid_id, corner_point_id, cell_point_id
+
+    CHARACTER(LEN=1024) :: grid_dir
 
     INTEGER(KIND=C_INT) :: nbr_vertices
     INTEGER(KIND=C_INT) :: nbr_cells
@@ -731,6 +735,9 @@ CONTAINS
     INTEGER(KIND=C_INT), POINTER :: cell_ids_c(:)
     INTEGER(KIND=C_INT), POINTER :: vertex_ids_c(:)
     INTEGER(KIND=C_INT), POINTER :: cell_to_vertex_c(:)
+
+    REAL(KIND=dp), ALLOCATABLE :: x_lonlat(:)
+    REAL(KIND=dp), ALLOCATABLE :: y_lonlat(:)
 
     INTEGER, ALLOCATABLE          :: num_vertices_per_cell(:)
     DOUBLE PRECISION, ALLOCATABLE :: x_vertices(:)
@@ -768,6 +775,17 @@ CONTAINS
 
       END SUBROUTINE read_grid_c
 
+      SUBROUTINE convert2rad_c(x_vertices, y_vertices, nbr_vertices) &
+        bind ( C, name='convert2rad' )
+
+        USE, INTRINSIC :: iso_c_binding, ONLY: C_INT, C_DOUBLE
+        
+        INTEGER(KIND=C_INT), VALUE, INTENT(IN)    :: nbr_vertices
+        REAL(C_DOUBLE),             INTENT(INOUT) :: x_vertices(*)
+        REAL(C_DOUBLE),             INTENT(INOUT) :: y_vertices(*)
+
+      END SUBROUTINE convert2rad_c
+
       SUBROUTINE free_c ( ptr ) bind ( c, NAME='free' )
 
        USE, INTRINSIC :: iso_c_binding, ONLY: C_PTR
@@ -777,6 +795,8 @@ CONTAINS
       END SUBROUTINE free_c
 
     END INTERFACE
+
+    grid_dir= TRIM(grid % Name)
 
     PRINT *, "READ GRID FROM FILE"
     ! get grid data from elmer component
@@ -795,11 +815,35 @@ CONTAINS
       x_vertices_c_ptr, y_vertices_c_ptr, x_cells_c_ptr, y_cells_c_ptr, &
       cell_ids_c_ptr, vertex_ids_c_ptr, cell_to_vertex_c_ptr)
 
-    PRINT *, "After READINF GRID FROM FILE"
-    CALL C_F_POINTER( &
-      num_vertices_per_cell_c_ptr, num_vertices_per_cell_c, shape=[nbr_cells])
+    ! TODO: Not needed anymore.
     CALL C_F_POINTER(x_vertices_c_ptr, x_vertices_c, shape=[nbr_vertices])
     CALL C_F_POINTER(y_vertices_c_ptr, y_vertices_c, shape=[nbr_vertices])
+    ! x_vertices = x_vertices_c
+    ! y_vertices = y_vertices_c
+    CALL free_c(x_vertices_c_ptr)
+    CALL free_c(y_vertices_c_ptr)
+
+    PRINT *, "After READINF GRID FROM FILE"
+
+    PRINT *, "CHECK: nbr_vertices", nbr_vertices, "==", grid % NumberOfNodes, "?"
+
+    ALLOCATE(x_lonlat(grid % NumberOfNodes))
+    x_lonlat = grid % Nodes % x
+    
+    ALLOCATE(y_lonlat(grid % NumberOfNodes))
+    y_lonlat = grid % Nodes % y
+    
+    nbr_vertices = grid % NumberOfNodes
+
+    CALL convert2rad_c(x_lonlat, y_lonlat, nbr_vertices)
+
+    x_vertices = x_lonlat
+    y_vertices = y_lonlat
+
+    PRINT *, "After READINF convert2rad_c"
+
+    CALL C_F_POINTER( &
+      num_vertices_per_cell_c_ptr, num_vertices_per_cell_c, shape=[nbr_cells])
     CALL C_F_POINTER(x_cells_c_ptr, x_cells_c, shape=[nbr_cells])
     CALL C_F_POINTER(y_cells_c_ptr, y_cells_c, shape=[nbr_cells])
     CALL C_F_POINTER(cell_ids_c_ptr, cell_ids_c, shape=[nbr_cells])
@@ -808,8 +852,6 @@ CONTAINS
       cell_to_vertex_c_ptr, cell_to_vertex_c, shape=[SUM(num_vertices_per_cell_c)])
 
     num_vertices_per_cell = num_vertices_per_cell_c
-    x_vertices = x_vertices_c
-    y_vertices = y_vertices_c
     x_cells = x_cells_c
     y_cells = y_cells_c
     cell_ids = cell_ids_c
@@ -817,8 +859,6 @@ CONTAINS
     cell_to_vertex = cell_to_vertex_c + 1
 
     CALL free_c(num_vertices_per_cell_c_ptr)
-    CALL free_c(x_vertices_c_ptr)
-    CALL free_c(y_vertices_c_ptr)
     CALL free_c(x_cells_c_ptr)
     CALL free_c(y_cells_c_ptr)
     CALL free_c(cell_ids_c_ptr)
@@ -829,6 +869,10 @@ CONTAINS
     ! register Elmer grid in YAC
     ! * is defined as an unstructured grid
     PRINT *, "BEFORE GRID DEF"
+    PRINT *, "CHECK: nbr_cells", nbr_cells, "==", grid % NumberOfBulkElements, "?"
+    
+    nbr_cells = grid % NumberOfBulkElements
+
     CALL yac_fdef_grid( &
       ELMER_GRID_NAME, nbr_vertices, nbr_cells, SUM(num_vertices_per_cell), &
       num_vertices_per_cell, x_vertices, y_vertices, cell_to_vertex, grid_id)

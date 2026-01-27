@@ -43,18 +43,43 @@ struct glb2loc {
   int global_id, local_id;
 };
 
-static void compute_cell_centers(
-  int nbr_cells, int * cell_to_vertex, int * num_vertices_per_cell,
-  double * x_vertices, double * y_vertices,
+static void _compute_cell_centers(
+  int nbr_cells, int * cell_to_vertex, const int * num_vertices_per_cell,
+  const double * x_vertices, const double * y_vertices,
   double * x_cells, double * y_cells);
 
 static int compare_glb2loc_glb (const void * a, const void * b) {
   return ((struct glb2loc*)a)->global_id - ((struct glb2loc*)b)->global_id;
 }
 
-static void convert2rad(
+// TODO: try to remove. Currently needed by _compute_cell_centers
+static void _convert2rad(
   double * x_vertices, double * y_vertices, int nbr_vertices) {
 
+  // define transformation
+  PJ * P =
+    proj_create_crs_to_crs(
+      PJ_DEFAULT_CTX, "EPSG:3413", "+proj=longlat +datum=WGS84", NULL);
+
+  if (!P) {
+    fputs("failed to create transformation", stderr);
+    MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+  }
+
+  // transform all vertices
+  for (int i = 0; i < nbr_vertices; ++i) {
+    PJ_COORD src_coord = proj_coord(x_vertices[i], y_vertices[i], 0, 0);
+    PJ_COORD tgt_coord = proj_trans(P, PJ_FWD, src_coord);
+    x_vertices[i] = proj_torad(tgt_coord.lp.lam);
+    y_vertices[i] = proj_torad(tgt_coord.lp.phi);
+  }
+
+  // clean up
+  proj_destroy(P);
+}
+
+void convert2rad(
+  double * x_vertices, double * y_vertices, const int nbr_vertices) {
   // define transformation
   PJ * P =
     proj_create_crs_to_crs(
@@ -219,9 +244,6 @@ void read_grid(
     fclose(header_file);
   }
 
-  // convert coordiantes to radian
-  convert2rad(*x_vertices, *y_vertices, *nbr_vertices);
-
   // sort global to local lookup by global ids
   qsort(
     glb2loc_vert, (size_t)*nbr_vertices, sizeof(*glb2loc_vert),
@@ -246,14 +268,17 @@ void read_grid(
 
     (*cell_to_vertex)[glb2loc_cell_vert[i].local_id] = glb2loc_vert[j].local_id;
   }
-
+  
   free(glb2loc_cell_vert);
   free(glb2loc_vert);
+
+  // convert coordiantes to radian
+  _convert2rad(*x_vertices, *y_vertices, *nbr_vertices);
 
   // compute cell centers from vertex coordiantes
   *x_cells = malloc(*nbr_cells * sizeof(**x_cells));
   *y_cells = malloc(*nbr_cells * sizeof(**y_cells));
-  compute_cell_centers(
+  _compute_cell_centers(
     *nbr_cells, *cell_to_vertex, *num_vertices_per_cell,
     *x_vertices, *y_vertices, *x_cells, *y_cells);
 }
@@ -284,9 +309,15 @@ static inline void normalise_vector(double v[]) {
    v[2] *= norm;
 }
 
-static void compute_cell_centers(
-  int nbr_cells, int * cell_to_vertex, int * num_vertices_per_cell,
-  double * x_vertices, double * y_vertices,
+void compute_cell_centers(
+  int nbr_cells, int * cell_to_vertex, const int * num_vertices_per_cell,
+  const double * x_vertices, const double * y_vertices) {
+
+}
+
+static void _compute_cell_centers(
+  int nbr_cells, int * cell_to_vertex, const int * num_vertices_per_cell,
+  const double * x_vertices, const double * y_vertices,
   double * x_cells, double * y_cells) {
 
   for (int i = 0; i < nbr_cells; ++i) {
