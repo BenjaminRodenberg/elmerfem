@@ -79,12 +79,11 @@ void convert2rad(
 
 void read_grid(
   char const * grid_dir, int rank, int size,
-  int nbr_vertices, int nbr_cells, int ** num_vertices_per_cell,
+  int nbr_vertices, int nbr_cells, const int * num_vertices_per_cell,
   const int * cell_ids, const int * vertex_ids, int ** cell_to_vertex) {
 
   enum {NUM_VERT_PER_CELL = 3};
 
-  *num_vertices_per_cell = NULL;
   *cell_to_vertex = NULL;
 
   if (!grid_dir) {
@@ -96,39 +95,20 @@ void read_grid(
   struct glb2loc * glb2loc_cell_vert = NULL;
 
   size_t grid_dir_len = strlen(grid_dir);
-  char header_filename[grid_dir_len + 64];
-  char nodes_filename[grid_dir_len + 64];
   char elements_filename[grid_dir_len + 64];
 
   // open files of current grid partition
 
-  sprintf(header_filename, "%s/partitioning.%d/part.%d.header", grid_dir, size, rank+1);
-  FILE * header_file = fopen(header_filename, "r");
-  sprintf(nodes_filename, "%s/partitioning.%d/part.%d.nodes", grid_dir, size, rank+1);
-  FILE * nodes_file = fopen(nodes_filename, "r");
   sprintf(elements_filename, "%s/partitioning.%d/part.%d.elements", grid_dir, size, rank+1);
   FILE * elements_file = fopen(elements_filename, "r");
 
-  if (!header_file || !nodes_file || !elements_file) {
+  if (!elements_file) {
     fprintf(
       stderr,"could not open grid files\n"
-      "header_file: %s %p\n"
-      "nodes_file: %s %p\n"
       "elements_file: %s %p\n",
-      header_filename, header_file,
-      nodes_filename, nodes_file,
       elements_filename, elements_file);
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
   }
-
-  // read header
-  int part_nbr_vertices, part_nbr_cells, part_nbr_edges;
-  fscanf(
-    header_file, "%d%d%d",
-    &part_nbr_vertices, &part_nbr_cells, &part_nbr_edges);
-
-  assert(part_nbr_vertices == nbr_vertices);
-  assert(part_nbr_cells == nbr_cells);
 
   // allocate arrays for ids
   glb2loc_vert =
@@ -143,24 +123,19 @@ void read_grid(
   }
 
   // allocate arrays for elements
-  *num_vertices_per_cell =
-    realloc(
-      *num_vertices_per_cell,
-      (size_t)(nbr_cells) * sizeof(**num_vertices_per_cell));
+  const size_t total_num_cell_vertices =
+    NUM_VERT_PER_CELL * nbr_cells;  // TODO: generally use num_vertices_per_cell[i] / sum(num_vertices_per_cell)
   *cell_to_vertex =
     realloc(
       *cell_to_vertex,
-      (size_t)((nbr_cells) * NUM_VERT_PER_CELL) *
-      sizeof(**cell_to_vertex));
+      total_num_cell_vertices * sizeof(**cell_to_vertex));
   glb2loc_cell_vert =
     realloc(
       glb2loc_cell_vert,
-      (size_t)((nbr_cells) * NUM_VERT_PER_CELL) *
-      sizeof(*glb2loc_cell_vert));
+      total_num_cell_vertices * sizeof(*glb2loc_cell_vert));
 
   // read element data
   for (int i = 0; i < nbr_cells; ++i) {
-    (*num_vertices_per_cell)[i] = NUM_VERT_PER_CELL;
     int dummy_a, dummy_b;
     int dummy_cell_id;
     fscanf(
@@ -177,20 +152,18 @@ void read_grid(
 
   // close files
   fclose(elements_file);
-  fclose(nodes_file);
-  fclose(header_file);
 
   // sort global to local lookup by global ids
   qsort(
     glb2loc_vert, (size_t)nbr_vertices, sizeof(*glb2loc_vert),
     compare_glb2loc_glb);
   qsort(
-    glb2loc_cell_vert, NUM_VERT_PER_CELL * (size_t)nbr_cells,
+    glb2loc_cell_vert, total_num_cell_vertices,
     sizeof(*glb2loc_cell_vert),
     compare_glb2loc_glb);
 
   // for all cell vertices -> map global cell vertices to local ones
-  for (size_t i = 0, j = 0; i < NUM_VERT_PER_CELL * nbr_cells; ++i) {
+  for (size_t i = 0, j = 0; i < total_num_cell_vertices; ++i) {
 
     while ((j < nbr_vertices) &&
            (glb2loc_cell_vert[i].global_id > glb2loc_vert[j].global_id)) ++j;
