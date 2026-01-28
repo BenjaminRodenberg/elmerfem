@@ -98,7 +98,6 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(IN) :: timestepstring
 
     INTEGER :: nbr_vertices, nbr_cells
-    INTEGER :: i
 
     nbr_vertices = yac_fget_points_size(corner_point_id)
     nbr_cells = yac_fget_points_size(cell_point_id)
@@ -421,7 +420,6 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(IN) :: timestepstring
 
     INTEGER :: nbr_vertices, nbr_cells
-    INTEGER :: i
 
     nbr_vertices = yac_fget_points_size(corner_point_id)
     nbr_cells = yac_fget_points_size(cell_point_id)
@@ -702,7 +700,7 @@ CONTAINS
 
   END SUBROUTINE coupling_init
 
-  SUBROUTINE coupling_setup(grid, num_parts, timestepstring)
+  SUBROUTINE coupling_setup(grid, timestepstring)
     ! Causes circular dependency with DefUtils
     ! USE DefUtils, ONLY: ParEnv
 
@@ -714,29 +712,24 @@ CONTAINS
 
     IMPLICIT NONE
 
-    INTEGER :: i, j, vertex_ptr
+    INTEGER :: i, j, n, vertex_ptr
+    INTEGER, POINTER :: this_cell_ids(:)
+
     TYPE(Mesh_t), POINTER, INTENT(IN) :: grid
     TYPE(Element_t), POINTER :: element
     CHARACTER(LEN=*), INTENT(IN) :: timestepstring
-    INTEGER, INTENT(IN) :: num_parts
 
     INTEGER :: grid_id, corner_point_id, cell_point_id
-
-    CHARACTER(LEN=1024) :: grid_dir
 
     INTEGER(KIND=C_INT) :: nbr_vertices
     INTEGER(KIND=C_INT) :: nbr_cells
 
-    INTEGER(KIND=C_INT), POINTER :: cell_to_vertex_c(:)
-
-    REAL(KIND=dp), ALLOCATABLE :: x_lonlat(:)
-    REAL(KIND=dp), ALLOCATABLE :: y_lonlat(:)
+    REAL(KIND=dp), ALLOCATABLE :: x_vertices(:)
+    REAL(KIND=dp), ALLOCATABLE :: y_vertices(:)
     REAL(KIND=dp), ALLOCATABLE :: x_cells(:)
     REAL(KIND=dp), ALLOCATABLE :: y_cells(:)
 
     INTEGER, ALLOCATABLE          :: num_vertices_per_cell(:)
-    DOUBLE PRECISION, ALLOCATABLE :: x_vertices(:)
-    DOUBLE PRECISION, ALLOCATABLE :: y_vertices(:)
     INTEGER, ALLOCATABLE          :: cell_ids(:)
     INTEGER, ALLOCATABLE          :: vertex_ids(:)
     INTEGER, ALLOCATABLE          :: cell_to_vertex(:)
@@ -754,35 +747,7 @@ CONTAINS
 
       END SUBROUTINE convert2rad_c
 
-      SUBROUTINE compute_cell_centers_c(nbr_cells, cell_to_vertex, &
-                                        num_vertices_per_cell, &
-                                        x_vertices, y_vertices, &
-                                        x_cells, y_cells) &
-        bind ( C, name='compute_cell_centers' )
-
-        USE, INTRINSIC :: iso_c_binding, ONLY: C_INT, C_DOUBLE
-
-        INTEGER(KIND=C_INT), VALUE, INTENT(IN) :: nbr_cells
-        INTEGER(KIND=C_INT),        INTENT(IN) :: cell_to_vertex(*)
-        INTEGER(KIND=C_INT),        INTENT(IN) :: num_vertices_per_cell(*)
-        REAL(C_DOUBLE),             INTENT(IN) :: x_vertices(*)
-        REAL(C_DOUBLE),             INTENT(IN) :: y_vertices(*)
-        REAL(C_DOUBLE),          INTENT(INOUT) :: x_cells(*)
-        REAL(C_DOUBLE),          INTENT(INOUT) :: y_cells(*)
-
-      END SUBROUTINE compute_cell_centers_c
-
-      SUBROUTINE free_c ( ptr ) bind ( c, NAME='free' )
-
-       USE, INTRINSIC :: iso_c_binding, ONLY: C_PTR
-
-       TYPE(C_PTR), VALUE :: ptr
-
-      END SUBROUTINE free_c
-
     END INTERFACE
-
-    grid_dir= TRIM(grid % Name)
 
     PRINT *, "READ GRID FROM FILE"
     ! get grid data from elmer component
@@ -794,7 +759,6 @@ CONTAINS
     !   to be read from file
     PRINT *, "COMM_RANK", comm_rank
     PRINT *, "COMM_SIZE", comm_size
-    PRINT *, "NUMPARTS", num_parts
 
     nbr_vertices = grid % NumberOfNodes
     ALLOCATE(vertex_ids(nbr_vertices))
@@ -826,27 +790,21 @@ CONTAINS
       END DO
     END DO
 
-    ALLOCATE(x_lonlat(nbr_vertices))
-    ALLOCATE(y_lonlat(nbr_vertices))
-    ALLOCATE(x_cells(nbr_cells))
-    ALLOCATE(y_cells(nbr_cells))
+    ALLOCATE(x_vertices(nbr_vertices), y_vertices(nbr_vertices))
+    x_vertices = grid % Nodes % x
+    y_vertices = grid % Nodes % y
 
-    ! Copy input for conversion from Elmer internal grid
-    x_lonlat = grid % Nodes % x
-    y_lonlat = grid % Nodes % y
+    ALLOCATE(x_cells(nbr_cells), y_cells(nbr_cells))
+    DO i=1,nbr_cells
+      element => grid % Elements(i)
+      n = Element % Type % NumberOfNodes
+      this_cell_ids => Element % NodeIndexes
+      x_cells(i) = SUM(x_vertices(this_cell_ids(1:n))) / n
+      y_cells(i) = SUM(y_vertices(this_cell_ids(1:n))) / n
+    END DO
 
-    CALL convert2rad_c(x_lonlat, y_lonlat, nbr_vertices)
-
-    ! Need C-type indexing inside compute_cell_centers for cell_to_vertex_c
-    ! Convert F-type indexing to C-type indexing
-    ALLOCATE(cell_to_vertex_c(SUM(num_vertices_per_cell)))
-    cell_to_vertex_c = cell_to_vertex - 1
-
-    CALL compute_cell_centers_c(nbr_cells, cell_to_vertex_c, num_vertices_per_cell, &
-      x_lonlat, y_lonlat, x_cells, y_cells)
-
-    x_vertices = x_lonlat
-    y_vertices = y_lonlat
+    CALL convert2rad_c(x_vertices, y_vertices, nbr_vertices)
+    CALL convert2rad_c(x_cells, y_cells, nbr_cells)
 
     ! register Elmer grid in YAC
     ! * is defined as an unstructured grid

@@ -16,7 +16,7 @@ SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
   TYPE(Mesh_t), POINTER :: ThisMesh
   CHARACTER(LEN=MAX_NAME_LEN):: SolverName='YAC2Elmer'
   CHARACTER(LEN=1024) ::  config_file, model_tstep
-  INTEGER :: num_parts, elmer_mesh_partitions, comm_rank, comm_size, ierror
+  INTEGER :: comm_rank, comm_size, ierror
   INTEGER :: I, t, ierr
   INTEGER, POINTER :: t_icePerm(:), smbPerm(:), runoffPerm(:)
   LOGICAL :: Parallel, FirstTime=.TRUE.
@@ -56,7 +56,6 @@ SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
     IF ((ParEnv % PEs <= 1) .AND. ( .NOT. ThisMesh % SingleMesh )) THEN
       CALL FATAL(SolverName,'Only parallel runs can use this solver')
     ELSE
-      elmer_mesh_partitions = ParEnv % PEs
       WRITE(Message,*) 'Running on with ',ParEnv % PEs ,' partitions' 
       CALL INFO(SolverName,Message,Level=3)
     END IF
@@ -67,9 +66,9 @@ SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
     PRINT *, "MESH number of elements:", ThisMesh % NumberOfBulkElements
     PRINT *, "###############################################"
     
-    !CALL coupling_setup(ThisMesh, elmer_mesh_partitions, "1")
+    !CALL coupling_setup(ThisMesh, "1")
     PRINT *, "BEFORE coupling setup"
-    CALL coupling_setup(ThisMesh, elmer_mesh_partitions, TRIM(model_tstep))
+    CALL coupling_setup(ThisMesh, TRIM(model_tstep))
     PRINT *, "AFTER coupling setup"
 
 
