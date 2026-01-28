@@ -776,7 +776,7 @@ CONTAINS
     DO i=1, nbr_cells
       element => grid % Elements(i)
       cell_ids(i) = element % GElementIndex
-      num_vertices_per_cell(i) = Element % Type % NumberOfNodes
+      num_vertices_per_cell(i) = element % Type % NumberOfNodes
     END DO
 
     ALLOCATE(cell_to_vertex(SUM(num_vertices_per_cell)))
@@ -797,8 +797,8 @@ CONTAINS
     ALLOCATE(x_cells(nbr_cells), y_cells(nbr_cells))
     DO i=1,nbr_cells
       element => grid % Elements(i)
-      n = Element % Type % NumberOfNodes
-      this_cell_ids => Element % NodeIndexes
+      n = element % Type % NumberOfNodes
+      this_cell_ids => element % NodeIndexes
       x_cells(i) = SUM(x_vertices(this_cell_ids(1:n))) / n
       y_cells(i) = SUM(y_vertices(this_cell_ids(1:n))) / n
     END DO
