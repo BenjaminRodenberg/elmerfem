@@ -16,6 +16,7 @@
        kstep, kinc)
 !------------------------------------------------------------------------------
     USE Types
+    USE Messages, ONLY: Fatal
     IMPLICIT NONE
 
     REAL(KIND=dp), INTENT(INOUT) :: STRESS(NTENS)
@@ -152,6 +153,7 @@
        kstep, kinc)
 !------------------------------------------------------------------------------
     USE Types
+    USE Messages, ONLY: Fatal
     IMPLICIT NONE
 
     REAL(KIND=dp), INTENT(INOUT) :: STRESS(NTENS)
@@ -315,6 +317,7 @@
        kstep, kinc)
 !------------------------------------------------------------------------------
     USE Types
+    USE Messages, ONLY: Fatal
     IMPLICIT NONE
 
     REAL(KIND=dp), INTENT(INOUT) :: STRESS(NTENS)
@@ -604,6 +607,7 @@
        kstep, kinc)
 !------------------------------------------------------------------------------
     USE Types
+    USE Messages, ONLY: Fatal
     IMPLICIT NONE
 
     REAL(KIND=dp), INTENT(INOUT) :: STRESS(NTENS)
