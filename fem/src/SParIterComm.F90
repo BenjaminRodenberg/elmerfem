@@ -2724,7 +2724,7 @@ END  SUBROUTINE SParIterAllReduceOR
 !> communication...
 !--------------------------------------------------------------------------
   SUBROUTINE ExchangeInterfaces( NbsIfMatrix, RecvdIfMatrix )
-    USE Types
+    USE Types_
     IMPLICIT NONE
 
     ! Parameters
@@ -2938,7 +2938,7 @@ END SUBROUTINE ExchangeInterfaces
 !--------------------------------------------------------------------------
   SUBROUTINE ExchangeIfvalues( NbsIfMatrix, RecvdIfMatrix, &
              NeedMass, NeedDamp, NeedPrec, NeedILU )
-    USE Types
+    USE Types_
     IMPLICIT NONE
 
     ! Parameters
@@ -4008,7 +4008,7 @@ END SUBROUTINE ExchangeRHSIf
 !> Send parts of the result vector to neighbours
 !----------------------------------------------------------------------
 SUBROUTINE ExchangeResult( SourceMatrix, SplittedMatrix, ParallelInfo, XVec )
-  USE types
+  USE types_
   IMPLICIT NONE
 
   TYPE(SplittedMatrixT) :: SplittedMatrix
@@ -4613,7 +4613,7 @@ END SUBROUTINE Recv_LocIf_size
 !> Receive interface block contributions to vector from neighbours
 !
 SUBROUTINE Recv_LocIf( SplittedMatrix, n, neigh, sizes, requests, buffer )
-  uSE Types
+  USE Types_
   IMPLICIT NONE
 
   TYPE (SplittedMatrixT) :: SplittedMatrix
@@ -4627,7 +4627,7 @@ SUBROUTINE Recv_LocIf( SplittedMatrix, n, neigh, sizes, requests, buffer )
 
   INTERFACE 
     SUBROUTINE MPI_IRECV( buf,size,type,proc,tag,comm,req,ierr )
-       USE Types
+       USE Types_
        REAL(KIND=dp)::buf(*)
        INTEGER :: size,type,proc,tag,comm,req,ierr
     END SUBROUTINE MPI_IRECV

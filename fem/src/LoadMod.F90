@@ -37,7 +37,7 @@
 ! Module for wrapping and replacing functionality in Load.c
 
 MODULE LoadMod
-    USE Types
+    USE Types_
     USE Messages, ONLY: Error
     USE, INTRINSIC :: ISO_C_BINDING
     USE huti_interfaces
@@ -926,7 +926,7 @@ MODULE LoadMod
                 coords, drot, pnewdt, celent, DFRGRD0, DFRGRD1, NOEL, NPT, layer, kspt, &
                 kstep, kinc)
               
-              USE Types
+              USE Types_
               IMPLICIT NONE
               
               REAL(KIND=dp), INTENT(INOUT) :: STRESS(NTENS)

@@ -43,7 +43,7 @@
 
 #include "../config.h"
 
-MODULE Types
+MODULE Types_
  
    USE, INTRINSIC :: ISO_C_BINDING
 #ifdef _OPENMP
@@ -1151,6 +1151,16 @@ MODULE Types
 
     CHARACTER(len=MAX_NAME_LEN) :: ExecID
 !------------------------------------------------------------------------------
+END MODULE Types_
+!------------------------------------------------------------------------------
+
+!------------------------------------------------------------------------------
+! This is a wrapper module to include all type definitions to be used by legacy
+! code that relies on automatic inclusion of Messages along with Types module.
+!------------------------------------------------------------------------------
+MODULE Types
+  USE Types_
+  USE Messages
 END MODULE Types
 !------------------------------------------------------------------------------
 !> \}

@@ -43,7 +43,7 @@
 
 MODULE Interpolation
 
-   USE Types
+   USE Types_
    USE Messages, ONLY: Message, Info, Warn, Fatal
    USE SParIterGlobals
    USE CoordinateSystems

@@ -5460,7 +5460,7 @@ END BLOCK
 
          INTERFACE
            SUBROUTINE RefineMeshExt(Model,Solver,Quant,Perm,InsideResidual,EdgeResidual,BoundaryResidual)
-             USE Types
+             USE Types_
 
              TYPE( Model_t ) :: Model
              TYPE(Solver_t), TARGET :: Solver
@@ -5469,7 +5469,7 @@ END BLOCK
 
              INTERFACE
                 SUBROUTINE BoundaryResidual( Model,Edge,Mesh,Quant,Perm,Gnorm,Indicator )
-                   USE Types
+                   USE Types_
                    TYPE(Element_t), POINTER :: Edge
                    TYPE(Model_t) :: Model
                    TYPE(Mesh_t), POINTER :: Mesh
@@ -5478,7 +5478,7 @@ END BLOCK
                 END SUBROUTINE BoundaryResidual
 
                 SUBROUTINE EdgeResidual( Model,Edge,Mesh,Quant,Perm, Indicator)
-                   USE Types
+                   USE Types_
                    TYPE(Element_t), POINTER :: Edge
                    TYPE(Model_t) :: Model
                    TYPE(Mesh_t), POINTER :: Mesh
@@ -5488,7 +5488,7 @@ END BLOCK
 
 
                 SUBROUTINE InsideResidual( Model,Element,Mesh,Quant,Perm,Fnorm, Indicator)
-                   USE Types
+                   USE Types_
                    TYPE(Element_t), POINTER :: Element
                    TYPE(Model_t) :: Model
                    TYPE(Mesh_t), POINTER :: Mesh
@@ -5499,7 +5499,7 @@ END BLOCK
            END SUBROUTINE RefineMeshExt
 
            SUBROUTINE BoundaryResidual( Model,Edge,Mesh,Quant,Perm,Gnorm,Indicator)
-             USE Types
+             USE Types_
              TYPE(Element_t), POINTER :: Edge
              TYPE(Model_t) :: Model
              TYPE(Mesh_t), POINTER :: Mesh
@@ -5508,7 +5508,7 @@ END BLOCK
            END SUBROUTINE BoundaryResidual
 
            SUBROUTINE EdgeResidual( Model,Edge,Mesh,Quant,Perm,Indicator)
-             USE Types
+             USE Types_
              TYPE(Element_t), POINTER :: Edge
              TYPE(Model_t) :: Model
              TYPE(Mesh_t), POINTER :: Mesh
@@ -5517,7 +5517,7 @@ END BLOCK
            END SUBROUTINE EdgeResidual
 
            SUBROUTINE InsideResidual( Model,Element,Mesh,Quant,Perm,Fnorm,Indicator)
-             USE Types
+             USE Types_
              TYPE(Element_t), POINTER :: Element
              TYPE(Model_t) :: Model
              TYPE(Mesh_t), POINTER :: Mesh
