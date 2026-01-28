@@ -630,6 +630,8 @@ MODULE elmer_coupling
   CHARACTER(LEN=MAX_CHARLEN), PARAMETER :: ELMER_GRID_NAME = "elmer_grid"
 
   INTEGER :: comp_id
+
+  ! TODO: Generally remove comm_rank and comm_size here and use ParEnv instead
   INTEGER :: comm_rank, comm_size
 
 CONTAINS
@@ -693,6 +695,8 @@ CONTAINS
 
     ! get number of ranks for the elmer component
     ! (required for reading in the grid data)
+
+    ! TODO: should not be necessary if getting data from Elmer internals, use ParEnv instead
     CALL MPI_Comm_rank(elmer_comm, comm_rank, ierror)
     CALL MPI_Comm_size(elmer_comm, comm_size, ierror)
 

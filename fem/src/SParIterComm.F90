@@ -289,6 +289,7 @@ CONTAINS
 #endif
     IF ( ierr /= 0 ) RETURN
 
+    ! Only needed for MPI_COMM_SPLIT if not using mpi_handshake
     CALL MPI_COMM_SIZE( MPI_COMM_WORLD, ParEnv % PEs, ierr )
     CALL MPI_COMM_RANK( MPI_COMM_WORLD, ParEnv % MyPE, ierr )
 
