@@ -46,6 +46,7 @@
 
 MODULE SParIterComm
 
+  USE Messages, ONLY: Info, Fatal, Message, USE_XIOS, USE_YAC, OutputPE, InfoActive
   USE LoadMod, ONLY : RealTime
   USE SParIterGlobals
 
