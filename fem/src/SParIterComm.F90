@@ -50,6 +50,9 @@ MODULE SParIterComm
 #ifdef HAVE_XIOS
   USE Messages, ONLY: USE_XIOS
 #endif
+#ifdef HAVE_YAC
+  USE Messages, ONLY: USE_YAC
+#endif
   USE LoadMod, ONLY : RealTime
   USE SParIterGlobals
 
