@@ -712,7 +712,7 @@ CONTAINS
 
     IMPLICIT NONE
 
-    INTEGER :: i, j, n, vertex_ptr
+    INTEGER :: i, j, n, vertex_offset
     INTEGER, POINTER :: this_cell_ids(:)
 
     TYPE(Mesh_t), POINTER, INTENT(IN) :: grid
@@ -780,13 +780,13 @@ CONTAINS
     END DO
 
     ALLOCATE(cell_to_vertex(SUM(num_vertices_per_cell)))
-    vertex_ptr = 1
+    vertex_offset = 1
     DO i=1, nbr_cells
       element => grid % Elements(i)
       DO j=1, num_vertices_per_cell(i)
         ! Use global vertex IDs for proper parallel mesh handling
-        cell_to_vertex(vertex_ptr) = element % NodeIndexes(j)
-        vertex_ptr = vertex_ptr + 1
+        cell_to_vertex(vertex_offset) = element % NodeIndexes(j)
+        vertex_offset = vertex_offset + 1
       END DO
     END DO
 
