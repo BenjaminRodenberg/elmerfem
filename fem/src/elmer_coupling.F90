@@ -703,7 +703,8 @@ CONTAINS
   END SUBROUTINE coupling_init
 
   SUBROUTINE coupling_setup(grid, num_parts, timestepstring)
-    USE DefUtils, ONLY: ParEnv
+    ! Causes circular dependency with DefUtils
+    ! USE DefUtils, ONLY: ParEnv
 
     USE :: elmer_ebfm_coupling
     USE :: elmer_icon_coupling
@@ -798,7 +799,8 @@ CONTAINS
     nbr_vertices = grid % NumberOfNodes
     ALLOCATE(vertex_ids(nbr_vertices))
     DO i=1, nbr_vertices
-      IF(ParEnv % PEs > 1) THEN
+      IF(comm_size > 1) THEN
+      ! IF(ParEnv % PEs > 1) THEN
         vertex_ids(i) = grid % ParallelInfo % GlobalDofs(i)
       ELSE
         vertex_ids(i) = i
