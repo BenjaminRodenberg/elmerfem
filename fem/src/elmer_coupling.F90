@@ -713,7 +713,7 @@ CONTAINS
 
     IMPLICIT NONE
 
-    INTEGER :: i
+    INTEGER :: i, j, vertex_ptr
     TYPE(Mesh_t), POINTER, INTENT(IN) :: grid
     TYPE(Element_t), POINTER :: element
     CHARACTER(LEN=*), INTENT(IN) :: timestepstring
@@ -725,11 +725,7 @@ CONTAINS
 
     INTEGER(KIND=C_INT) :: nbr_vertices
     INTEGER(KIND=C_INT) :: nbr_cells
-    TYPE(C_PTR)         :: num_vertices_per_cell_c_ptr ! int **
-    TYPE(C_PTR)         :: cell_to_vertex_c_ptr ! int **
 
-    INTEGER(KIND=C_INT), POINTER :: num_vertices_per_cell_c(:)
-    INTEGER(KIND=C_INT), POINTER :: cell_ids_c(:)
     INTEGER(KIND=C_INT), POINTER :: cell_to_vertex_c(:)
 
     REAL(KIND=dp), ALLOCATABLE :: x_lonlat(:)
@@ -745,25 +741,6 @@ CONTAINS
     INTEGER, ALLOCATABLE          :: cell_to_vertex(:)
 
     INTERFACE
-
-      SUBROUTINE read_grid_c(grid_dir, rank, size, &
-                             nbr_vertices, nbr_cells, num_vertices_per_cell, &
-                             cell_ids, vertex_ids, cell_to_vertex) &
-        bind ( C, name='read_grid' )
-
-        USE, INTRINSIC :: iso_c_binding, ONLY: C_INT, C_DOUBLE, C_PTR, C_CHAR
-
-        CHARACTER(KIND=C_CHAR) :: grid_dir(*)
-        INTEGER(KIND=C_INT), VALUE, INTENT(IN)  :: rank
-        INTEGER(KIND=C_INT), VALUE, INTENT(IN)  :: size
-        INTEGER(KIND=C_INT), VALUE, INTENT(IN)  :: nbr_vertices
-        INTEGER(KIND=C_INT), VALUE, INTENT(IN)  :: nbr_cells
-        INTEGER(KIND=C_INT)       , INTENT(IN)  :: num_vertices_per_cell(*)
-        INTEGER(KIND=C_INT)       , INTENT(IN)  :: cell_ids(*)
-        INTEGER(KIND=C_INT)       , INTENT(IN)  :: vertex_ids(*)
-        TYPE(C_PTR)               , INTENT(OUT) :: cell_to_vertex ! int **
-
-      END SUBROUTINE read_grid_c
 
       SUBROUTINE convert2rad_c(x_vertices, y_vertices, nbr_vertices) &
         bind ( C, name='convert2rad' )
@@ -836,18 +813,16 @@ CONTAINS
       num_vertices_per_cell(i) = Element % Type % NumberOfNodes
     END DO
 
-    ! Review comm_rank, comm_size, num_parts.
-    ! comm_rank -> ParEnv % MyPE
-    ! comm_size -> ParEnv % PEs
-    ! num_parts -> remove?
-
-    CALL read_grid_c( &
-      TRIM(grid_dir) // c_null_char, comm_rank, comm_size, &
-      nbr_vertices, nbr_cells, num_vertices_per_cell, &
-      cell_ids, vertex_ids, cell_to_vertex_c_ptr)
-
-    CALL C_F_POINTER( &
-      cell_to_vertex_c_ptr, cell_to_vertex_c, shape=[SUM(num_vertices_per_cell)])
+    ALLOCATE(cell_to_vertex(SUM(num_vertices_per_cell)))
+    vertex_ptr = 1
+    DO i=1, nbr_cells
+      element => grid % Elements(i)
+      DO j=1, num_vertices_per_cell(i)
+        ! Use global vertex IDs for proper parallel mesh handling
+        cell_to_vertex(vertex_ptr) = element % NodeIndexes(j)
+        vertex_ptr = vertex_ptr + 1
+      END DO
+    END DO
 
     ALLOCATE(x_lonlat(nbr_vertices))
     ALLOCATE(y_lonlat(nbr_vertices))
@@ -861,17 +836,15 @@ CONTAINS
     CALL convert2rad_c(x_lonlat, y_lonlat, nbr_vertices)
 
     ! Need C-type indexing inside compute_cell_centers for cell_to_vertex_c
+    ! Convert F-type indexing to C-type indexing
+    ALLOCATE(cell_to_vertex_c(SUM(num_vertices_per_cell)))
+    cell_to_vertex_c = cell_to_vertex - 1
+
     CALL compute_cell_centers_c(nbr_cells, cell_to_vertex_c, num_vertices_per_cell, &
       x_lonlat, y_lonlat, x_cells, y_cells)
 
     x_vertices = x_lonlat
     y_vertices = y_lonlat
-
-    ! Convert C-type indexing to F-type indexing
-    cell_to_vertex = cell_to_vertex_c + 1
-
-    ! Free C-allocated memory after use
-    CALL free_c(cell_to_vertex_c_ptr)
 
     ! register Elmer grid in YAC
     ! * is defined as an unstructured grid

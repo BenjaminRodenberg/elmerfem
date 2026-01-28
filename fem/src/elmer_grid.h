@@ -33,11 +33,6 @@
 #ifndef ELMER_GRID_H
 #define ELMER_GRID_H
 
-void read_grid(
-  char const * grid_dir, int rank, int size,
-  int nbr_vertices, int nbr_cells, const int * num_vertices_per_cell,
-  const int * cell_ids, const int * vertex_ids, int ** cell_to_vertex);
-
 void convert2rad(
   double * x_vertices, double * y_vertices, const int nbr_vertices);
 
