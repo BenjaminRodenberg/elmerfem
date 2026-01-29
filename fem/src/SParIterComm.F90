@@ -399,28 +399,9 @@ ParEnv % MyPE,ELMER_COMM_WORLD,ierr)
 #        endif
     END IF
 #endif
-
-! Use YAC library for coupling
-!
-PRINT *, "BEFORE COUPLING INIT"
-#ifdef HAVE_YAC
-    IF (USE_YAC) THEN
-      WRITE(Message,'(A,A)') &
-        "Using YAC coupler with config-file:", &
-        TRIM(yac_config_file)
-
-      CALL INFO("SparIterComm",Message,Level=25)
-      ! TODO: Refactor to also provide GROUP_NAMES(XIOS_GROUP_IDX) here
-      ! CALL coupling_init(yac_config_file, ELMER_COMM_WORLD,&
-      ! GROUP_COMMS(COUPLER_GROUP_IDX), GROUP_NAMES(ELMER_GROUP_IDX))
-      CALL coupling_init(yac_config_file, ELMER_COMM_WORLD,&
-      GROUP_COMMS(COUPLER_GROUP_IDX))
-    END IF
-#endif
     
+    ! Set ParEnv values according to ELMER_COMM_WORLD
     ParEnv % ActiveComm = ELMER_COMM_WORLD
-
-!ELMER_COMM_WORLD=MPI_COMM_WORLD
 
     CALL MPI_COMM_SIZE( ELMER_COMM_WORLD, ParEnv % PEs, ierr )
     IF ( ierr /= 0 ) THEN
@@ -442,6 +423,29 @@ PRINT *, "BEFORE COUPLING INIT"
        Parenv % NumOfNeighbours = 0
        ParEnv % Initialized = .TRUE.
     END IF
+
+    ! Use YAC library for coupling
+    ! Needs initialized  ParEnv % MyPE.
+PRINT *, "BEFORE COUPLING INIT"
+#ifdef HAVE_YAC
+    IF (USE_YAC) THEN
+      IF ( .NOT. ParEnv % Initialized ) THEN
+        WRITE( Message,'(A)') 'ParEnv not initialized before coupling_init'
+        CALL Fatal( 'ParCommInit', Message )
+      END IF
+
+      WRITE(Message,'(A,A)') &
+        "Using YAC coupler with config-file:", &
+        TRIM(yac_config_file)
+
+      CALL INFO("SparIterComm",Message,Level=25)
+      ! TODO: Refactor to also provide GROUP_NAMES(XIOS_GROUP_IDX) here
+      ! CALL coupling_init(yac_config_file, ParEnv % MyPE ,&
+      ! GROUP_COMMS(COUPLER_GROUP_IDX), GROUP_NAMES(ELMER_GROUP_IDX))
+      CALL coupling_init(yac_config_file, ParEnv % MyPE ,&
+      GROUP_COMMS(COUPLER_GROUP_IDX))
+    END IF
+#endif
 !-----------------------------------------------------------------------
   END FUNCTION ParCommInit
 !-----------------------------------------------------------------------

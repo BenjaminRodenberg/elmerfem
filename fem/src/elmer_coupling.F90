@@ -141,16 +141,16 @@ CONTAINS
   END SUBROUTINE construct_elmer_ebfm_coupling
 
   SUBROUTINE construct_elmer_ebfm_coupling_post_sync( &
-    comm_rank, elmer_comp_name, elmer_grid_name)
+    is_main_rank, elmer_comp_name, elmer_grid_name)
 
-    INTEGER, INTENT(IN) :: comm_rank
+    LOGICAL, INTENT(IN) :: is_main_rank
     CHARACTER(LEN=*), INTENT(IN) :: elmer_comp_name
     CHARACTER(LEN=*), INTENT(IN) :: elmer_grid_name
 
     ! after synchronisation or the end of the definition phase YAC can be
     ! queried about various information
 
-    IF (comm_rank /= 0) RETURN
+    IF (.NOT. is_main_rank) RETURN
 
     CALL print_field_info(elmer_comp_name, elmer_grid_name, t_ice_field_name)
     CALL print_field_info(elmer_comp_name, elmer_grid_name, smb_field_name)
@@ -204,19 +204,19 @@ CONTAINS
 
   END SUBROUTINE construct_elmer_ebfm_coupling_post_sync
 
-  SUBROUTINE elmer_ebfm_interface(comm_rank)
+  SUBROUTINE elmer_ebfm_interface(is_main_rank)
 
-    INTEGER, INTENT(IN) :: comm_rank
+    LOGICAL, INTENT(IN) :: is_main_rank
 
     INTEGER :: info, err
 
-    PRINT *, "IN EBFM_INTERFACE" , comm_rank
+    PRINT *, "IN EBFM_INTERFACE"
     ! checks whether the T_ice field is defined as a target
     ! in a couple
     IF (yac_fget_role_from_field_id(t_ice_field_id) == &
         YAC_EXCHANGE_TYPE_TARGET) THEN
 
-      IF (comm_rank == 0) THEN
+      IF (is_main_rank) THEN
 
         ! get the action executed by YAC in the next get operation called for
         ! the T_ice field and print out some information
@@ -236,11 +236,11 @@ CONTAINS
       !   been received
       ! * if this is not a coupling timestep, T_ice field buffer
       !   is left untouched and routine will return immediately
-      PRINT *, "CALLING FGET for TICE" , comm_rank
+      PRINT *, "CALLING FGET for TICE"
       CALL yac_fget( &
         t_ice_field_id, SIZE(t_ice_field, 1), SIZE(t_ice_field, 2), t_ice_field, &
         info, err)
-      PRINT *, "AFTER FGET for TICE" , comm_rank
+      PRINT *, "AFTER FGET for TICE"
 
       ! if this was a coupling timestep
       IF ((info == YAC_ACTION_COUPLING) .OR. &
@@ -258,7 +258,7 @@ CONTAINS
     IF (yac_fget_role_from_field_id(smb_field_id) == &
         YAC_EXCHANGE_TYPE_TARGET) THEN
 
-      IF (comm_rank == 0) THEN
+      IF (is_main_rank) THEN
 
         ! get the action executed by YAC in the next get operation called for
         ! the smb field and print out some information
@@ -298,7 +298,7 @@ CONTAINS
     IF (yac_fget_role_from_field_id(runoff_field_id) == &
         YAC_EXCHANGE_TYPE_TARGET) THEN
 
-      IF (comm_rank == 0) THEN
+      IF (is_main_rank) THEN
 
         ! get the action executed by YAC in the next get operation called for
         ! the runoff field and print out some information
@@ -335,11 +335,11 @@ CONTAINS
 
     ! checks whether the surface height field is defined as a source
     ! in a couple
-    PRINT *, "BEFORE ICE_SHEET_HEIGHT" , comm_rank
+    PRINT *, "BEFORE ICE_SHEET_HEIGHT"
     IF (yac_fget_role_from_field_id(surface_height_field_id) == &
         YAC_EXCHANGE_TYPE_SOURCE) THEN
 
-      IF (comm_rank == 0) THEN
+      IF (is_main_rank) THEN
 
         ! get the action executed by YAC in the next put operation called for
         ! the surface_height field and print out some information
@@ -365,11 +365,11 @@ CONTAINS
         !   been received
         ! * if this is not a coupling timestep, surface_height field buffer
         !   is left untouched and routine will return immediately
-        PRINT *, "BEFORE FPUT for ICE_SHEET_HEIGHT" , comm_rank
+        PRINT *, "BEFORE FPUT for ICE_SHEET_HEIGHT"
         CALL yac_fput( &
           surface_height_field_id, SIZE(surface_height_field, 1), SIZE(surface_height_field, 2), surface_height_field, &
           info, err)
-        PRINT *, "AFTER FPUT for ICE_SHEET_HEIGHT" , comm_rank
+        PRINT *, "AFTER FPUT for ICE_SHEET_HEIGHT"
       END IF
     END IF
 
@@ -444,17 +444,16 @@ CONTAINS
 
   END SUBROUTINE construct_elmer_icon_coupling
 
-  SUBROUTINE construct_elmer_icon_coupling_post_sync( &
-    comm_rank, elmer_comp_name, elmer_grid_name)
+  SUBROUTINE construct_elmer_icon_coupling_post_sync(is_main_rank, elmer_comp_name, elmer_grid_name)
 
-    INTEGER, INTENT(IN) :: comm_rank
+    LOGICAL, INTENT(IN) :: is_main_rank
     CHARACTER(LEN=*), INTENT(IN) :: elmer_comp_name
     CHARACTER(LEN=*), INTENT(IN) :: elmer_grid_name
 
     ! after synchronisation or the end of the definition phase YAC can be
     ! queried about various information
 
-    IF (comm_rank /= 0) RETURN
+    IF (.NOT. is_main_rank) RETURN
 
     CALL print_field_info(elmer_comp_name, elmer_grid_name, pr_field_name)
     CALL print_field_info(elmer_comp_name, elmer_grid_name, clt_field_name)
@@ -507,9 +506,9 @@ CONTAINS
 
   END SUBROUTINE construct_elmer_icon_coupling_post_sync
 
-  SUBROUTINE elmer_icon_interface(comm_rank)
+  SUBROUTINE elmer_icon_interface(is_main_rank)
 
-    INTEGER, INTENT(IN) :: comm_rank
+    LOGICAL, INTENT(IN) :: is_main_rank
 
     INTEGER :: info, err
 
@@ -518,7 +517,7 @@ CONTAINS
     IF (yac_fget_role_from_field_id(clt_field_id) == &
         YAC_EXCHANGE_TYPE_TARGET) THEN
 
-      IF (comm_rank == 0) THEN
+      IF (is_main_rank) THEN
 
         ! get the action executed by YAC in the next get operation called for
         ! the total cloud cover field and print out some information
@@ -558,7 +557,7 @@ CONTAINS
     IF (yac_fget_role_from_field_id(pr_field_id) == &
         YAC_EXCHANGE_TYPE_TARGET) THEN
 
-      IF (comm_rank == 0) THEN
+      IF (is_main_rank) THEN
 
         ! get the action executed by YAC in the next get operation called for
         ! the precipitation flux field and print out some information
@@ -621,6 +620,9 @@ MODULE elmer_coupling
   INTEGER, PARAMETER, PRIVATE :: MAX_CHARLEN = 132
   INTEGER, PARAMETER, PUBLIC :: elmer_coupling_MAX_GROUPNAME_LEN = MAX_CHARLEN
 
+  ! MAIN_RANK defines rank of this component taking care of logging.
+  INTEGER, PARAMETER, PRIVATE :: MAIN_RANK = 0
+
   ! TODO: Allow to set component name from outside
   ! CHARACTER(LEN=MAX_CHARLEN) :: ELMER_COMP_NAME
   ! to make sure to have a single YAML file in case of multiple Elmer/Ice domains
@@ -629,8 +631,8 @@ MODULE elmer_coupling
 
   INTEGER :: comp_id
 
-  ! TODO: Generally remove comm_rank and comm_size here and use ParEnv instead
-  INTEGER :: comm_rank, comm_size
+  ! True if this is the MAIN_RANK of this component.
+  LOGICAL, PUBLIC :: is_main_rank
 
 CONTAINS
 
@@ -655,19 +657,20 @@ CONTAINS
   END SUBROUTINE coupler_get_code_id
 
   ! TODO: Refactor to also accept comp_name here
-  ! SUBROUTINE coupling_init(coupling_config_file, elmer_comm, yac_comm, comp_name)
-  SUBROUTINE coupling_init(coupling_config_file, elmer_comm, yac_comm)
+  ! SUBROUTINE coupling_init(coupling_config_file, elmer_rank, yac_comm, comp_name)
+  SUBROUTINE coupling_init(coupling_config_file, elmer_rank, yac_comm)
 
     IMPLICIT NONE
 
     CHARACTER(LEN=*), INTENT(IN) :: coupling_config_file
-    INTEGER, INTENT(IN) :: elmer_comm
+    INTEGER, INTENT(IN) :: elmer_rank
     INTEGER, INTENT(IN) :: yac_comm
 
     ! CHARACTER(LEN=elmer_coupling_MAX_GROUPNAME_LEN), INTENT(IN) :: comp_name
 
     INTEGER :: ierror
 
+    is_main_rank = (elmer_rank == MAIN_RANK)
 
     ! initialise YAC
     ! * is collective operation on yac_comm
@@ -691,13 +694,6 @@ CONTAINS
     ! ELMER_COMP_NAME = comp_name
     CALL yac_fdef_comp(ELMER_COMP_NAME, comp_id)
 
-    ! get number of ranks for the elmer component
-    ! (required for reading in the grid data)
-
-    ! TODO: should not be necessary if getting data from Elmer internals, use ParEnv instead
-    CALL MPI_Comm_rank(elmer_comm, comm_rank, ierror)
-    CALL MPI_Comm_size(elmer_comm, comm_size, ierror)
-
   END SUBROUTINE coupling_init
 
   SUBROUTINE coupling_setup(grid, timestepstring)
@@ -706,7 +702,7 @@ CONTAINS
 
     USE :: elmer_ebfm_coupling
     USE :: elmer_icon_coupling
-    USE, INTRINSIC :: iso_c_binding, ONLY: C_INT, C_DOUBLE, C_PTR, C_F_POINTER, C_NULL_CHAR
+    USE, INTRINSIC :: iso_c_binding, ONLY: C_INT, C_DOUBLE
 
     USE :: Types, ONLY: Mesh_t, Element_t, dp
 
@@ -749,27 +745,9 @@ CONTAINS
 
     END INTERFACE
 
-    PRINT *, "READ GRID FROM FILE"
-    ! get grid data from elmer component
-    ! in the case of the dummy, we have to read it from file
-
-    ! read grid data from file
-    ! * each process only reads in its local part of the grid
-    ! * in Elmer this information probably already available and does not have
-    !   to be read from file
-    PRINT *, "COMM_RANK", comm_rank
-    PRINT *, "COMM_SIZE", comm_size
-
     nbr_vertices = grid % NumberOfNodes
     ALLOCATE(vertex_ids(nbr_vertices))
-    DO i=1, nbr_vertices
-      IF(comm_size > 1) THEN
-      ! IF(ParEnv % PEs > 1) THEN
-        vertex_ids(i) = grid % ParallelInfo % GlobalDofs(i)
-      ELSE
-        vertex_ids(i) = i
-      END IF
-    END DO
+    vertex_ids = grid % ParallelInfo % GlobalDofs
 
     nbr_cells = grid % NumberOfBulkElements
     ALLOCATE(cell_ids(nbr_cells), num_vertices_per_cell(nbr_cells))
@@ -844,10 +822,8 @@ CONTAINS
 
     ! construct coupling between Elmer/Ice and ICON (using sychronized
     ! information from all components)
-    !CALL construct_elmer_icon_coupling_post_sync( &
-      !comm_rank, ELMER_COMP_NAME, ELMER_GRID_NAME)
-    CALL construct_elmer_ebfm_coupling_post_sync( &
-      comm_rank, ELMER_COMP_NAME, ELMER_GRID_NAME)
+    !CALL construct_elmer_icon_coupling_post_sync(is_main_rank, ELMER_COMP_NAME, ELMER_GRID_NAME)
+    CALL construct_elmer_ebfm_coupling_post_sync(is_main_rank, ELMER_COMP_NAME, ELMER_GRID_NAME)
 
     ! end of definition phase
     ! * collective operation for all processes that initialised YAC
