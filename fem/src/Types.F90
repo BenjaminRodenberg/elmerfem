@@ -1153,14 +1153,3 @@ MODULE Types_
 !------------------------------------------------------------------------------
 END MODULE Types_
 !------------------------------------------------------------------------------
-
-!------------------------------------------------------------------------------
-! This is a wrapper module to include all type definitions to be used by legacy
-! code that relies on automatic inclusion of Messages along with Types module.
-!------------------------------------------------------------------------------
-MODULE Types
-  USE Types_
-  USE Messages
-END MODULE Types
-!------------------------------------------------------------------------------
-!> \}
