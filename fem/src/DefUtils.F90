@@ -45,7 +45,7 @@
 !> this module should provide all the needed functionality for typical finite
 !> element procedures.  
 !--------------------------------------------------------------------------------
-MODULE DefUtils
+MODULE DefUtils_
 
 #include "../config.h"
 
@@ -8037,7 +8037,7 @@ CONTAINS
   END SUBROUTINE CheckColourings
 
 
-END MODULE DefUtils
+END MODULE DefUtils_
 
 !> \}  // end of subgroup
 !> \}  // end of group
