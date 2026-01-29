@@ -58,7 +58,7 @@ SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
     IF ((ParEnv % PEs <= 1) .AND. ( .NOT. ThisMesh % SingleMesh )) THEN
       CALL FATAL(SolverName,'Only parallel runs can use this solver')
     ELSE
-      WRITE(Message,*) 'Running on with ',ParEnv % PEs ,' partitions' 
+      WRITE(Message,*) 'Running with ',ParEnv % PEs ,' partitions' 
       CALL INFO(SolverName,Message,Level=3)
     END IF
 

@@ -754,7 +754,7 @@ CONTAINS
       num_vertices_per_cell(i) = element % Type % NumberOfNodes
     END DO
 
-    ALLOCATE(cell_to_vertex(SUM(num_vertices_per_cell)))
+    ALLOCATE(cell_to_vertex(SUM(num_vertices_per_cell(:))))
     vertex_offset = 1
     DO i=1, nbr_cells
       element => grid % Elements(i)
@@ -766,8 +766,8 @@ CONTAINS
     END DO
 
     ALLOCATE(x_vertices(nbr_vertices), y_vertices(nbr_vertices))
-    x_vertices = grid % Nodes % x
-    y_vertices = grid % Nodes % y
+    x_vertices(:) = grid % Nodes % x(1:nbr_vertices)
+    y_vertices(:) = grid % Nodes % y(1:nbr_vertices)
 
     ALLOCATE(x_cells(nbr_cells), y_cells(nbr_cells))
     DO i=1,nbr_cells
