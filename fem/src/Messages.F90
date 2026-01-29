@@ -55,13 +55,9 @@ MODULE Messages
   USE XIOS, ONLY: xios_context_finalize, xios_finalize
 #endif
 
-! Causes circular dependency
-!
-! Messages --USE--> elmer_coupling --USE--> Types --USE--> Messages
-!
-! #ifdef HAVE_YAC
-!    USE elmer_coupling, ONLY: coupling_finalize
-! #endif
+#ifdef HAVE_YAC
+   USE elmer_coupling, ONLY: coupling_finalize
+#endif
    
    IMPLICIT NONE
    
@@ -342,12 +338,11 @@ CONTAINS
      ENDIF
 #endif
 
-! Cannot call coupling_finalize() here because this causes a circular dependency
-! #ifdef HAVE_YAC
-!      IF (USE_YAC) THEN
-!        CALL coupling_finalize()
-!      END IF
-! #endif
+#ifdef HAVE_YAC
+     IF (USE_YAC) THEN
+       CALL coupling_finalize()
+     END IF
+#endif
 !-----------------------------------------------------------------------
    END SUBROUTINE Fatal
 !-----------------------------------------------------------------------
