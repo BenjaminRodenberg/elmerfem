@@ -697,9 +697,6 @@ CONTAINS
   END SUBROUTINE coupling_init
 
   SUBROUTINE coupling_setup(grid, timestepstring)
-    ! Causes circular dependency with DefUtils
-    ! USE DefUtils, ONLY: ParEnv
-
     USE :: elmer_ebfm_coupling
     USE :: elmer_icon_coupling
     USE, INTRINSIC :: iso_c_binding, ONLY: C_INT, C_DOUBLE
