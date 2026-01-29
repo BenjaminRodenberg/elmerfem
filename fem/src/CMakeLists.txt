@@ -17,21 +17,22 @@ ENDIF()
 SET(prefix "${CMAKE_INSTALL_PREFIX}")
 
 SET(solverlib_SOURCES AddrFunc.F90 NavierStokes.F90 NavierStokesGeneral.F90
-  NavierStokesCylindrical.F90 Lists.F90
-  DiffuseConvectiveAnisotropic.F90 LoadMod.F90
+  NavierStokesCylindrical.F90 LoadMod.F90 GeneralUtils.F90 Lists.F90
+  DiffuseConvectiveAnisotropic.F90
   DiffuseConvectiveGeneralAnisotropic.F90 PElementMaps.F90
   PElementBase.F90 ElementDescription.F90 Integration.F90 ListMatrixArray.F90
-  ModelDescription.F90 GeneralUtils.F90 Stress.F90 StressGeneral.F90
+  ModelDescription.F90 Stress.F90 StressGeneral.F90
   LinearAlgebra.F90 CoordinateSystems.F90 ListMatrix.F90 CRSMatrix.F90
   BandMatrix.F90 BandwidthOptimize.F90 BlockSolve.F90
-  MaterialModels.F90 DirectSolve.F90 IterSolve.F90
-  IterativeMethods.F90 TimeIntegrate.F90 Types.F90 TypesWrapper.F90 SolveBand.F90
+  MaterialModels.F90 Types.F90 Messages.F90 IterSolve.F90
+  IterativeMethods.F90 SParIterGlobals.F90 SParIterComm.F90
+  SParIterPrecond.F90 SParIterSolver.F90 DirectSolve.F90
+  TimeIntegrate.F90 TypesWrapper.F90 SolveBand.F90
   ElementUtils.F90 Radiation.F90 fft.c Load.c Differentials.F90
   FreeSurface.F90 
-  Walls.F90 SolverUtils.F90 SolveSBand.F90 CPUTime.c Interpolation.F90
+  Walls.F90 SolveSBand.F90 CPUTime.c Interpolation.F90
   MainUtils.F90 Adaptive.F90 EigenSolve.F90 HashTable.F90
-  MeshUtils.F90 SaveUtils.F90 SParIterGlobals.F90 SParIterComm.F90
-  SParIterPrecond.F90 SParIterSolver.F90 Messages.F90 Multigrid.F90
+  MeshUtils.F90 SaveUtils.F90 Multigrid.F90
   Smoothers.F90 ClusteringMethods.F90 ParallelUtils.F90
   ParallelEigenSolve.F90 solve_cmplx.F90 solve_real.F90 MGPrec.F90
   DefUtils.F90 DefUtilsWrapper.F90 MeshPartition.F90 MeshRemeshing.F90
@@ -43,7 +44,7 @@ SET(solverlib_SOURCES AddrFunc.F90 NavierStokes.F90 NavierStokesGeneral.F90
   LinearForms.F90 H1Basis.F90 CircuitUtils.F90 BackwardError.F90
   ElmerSolver.F90 MagnetoDynamicsUtils.F90 LumpingUtils.F90 
   ZirkaHysteresis.F90 SolidMechanicsUtils.F90 MatrixAssembly.F90 
-  OptimizationUtils.F90 MeshGenerate.F90)
+  SolverUtils.F90 OptimizationUtils.F90 MeshGenerate.F90)
 
 #SET_PROPERTY(SOURCE MaxwellAxiS.F90 PROPERTY
 #	COMPILE_DEFINITIONS FULL_INDUCTION)
