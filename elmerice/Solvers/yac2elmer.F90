@@ -18,7 +18,6 @@ SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
   TYPE(Mesh_t), POINTER :: ThisMesh
   CHARACTER(LEN=MAX_NAME_LEN):: SolverName='YAC2Elmer'
   CHARACTER(LEN=1024) ::  config_file, model_tstep
-  INTEGER :: comm_rank, comm_size, ierror
   INTEGER :: I, t, ierr
   INTEGER, POINTER :: t_icePerm(:), smbPerm(:), runoffPerm(:)
   LOGICAL :: Parallel, FirstTime=.TRUE.
@@ -61,14 +60,7 @@ SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
       WRITE(Message,*) 'Running with ',ParEnv % PEs ,' partitions' 
       CALL INFO(SolverName,Message,Level=3)
     END IF
-
-    PRINT *, "###############################################"
-    PRINT *, "MESH dimension:", ThisMesh % MeshDim
-    PRINT *, "MESH number of nodes:", ThisMesh % NumberOfNodes
-    PRINT *, "MESH number of elements:", ThisMesh % NumberOfBulkElements
-    PRINT *, "###############################################"
     
-    !CALL coupling_setup(ThisMesh, "1")
     PRINT *, "BEFORE coupling setup"
     CALL coupling_setup(ThisMesh, TRIM(model_tstep))
     PRINT *, "AFTER coupling setup"
@@ -100,10 +92,8 @@ SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
   
     PRINT *, "AFTER variable addition"
     
-    
     FirstTime = .FALSE.
 
-    CALL INFO(SolverName,Message,Level=1) 
   END IF
 !!!!!!!!!! DO WE HAVE TO INITIALIZE WITH EVERY CALL ? !!!!!!!!!!!!!!
   

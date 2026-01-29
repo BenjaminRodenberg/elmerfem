@@ -444,7 +444,8 @@ CONTAINS
 
   END SUBROUTINE construct_elmer_icon_coupling
 
-  SUBROUTINE construct_elmer_icon_coupling_post_sync(is_main_rank, elmer_comp_name, elmer_grid_name)
+  SUBROUTINE construct_elmer_icon_coupling_post_sync( &
+    is_main_rank, elmer_comp_name, elmer_grid_name)
 
     LOGICAL, INTENT(IN) :: is_main_rank
     CHARACTER(LEN=*), INTENT(IN) :: elmer_comp_name
@@ -819,8 +820,10 @@ CONTAINS
 
     ! construct coupling between Elmer/Ice and ICON (using sychronized
     ! information from all components)
-    !CALL construct_elmer_icon_coupling_post_sync(is_main_rank, ELMER_COMP_NAME, ELMER_GRID_NAME)
-    CALL construct_elmer_ebfm_coupling_post_sync(is_main_rank, ELMER_COMP_NAME, ELMER_GRID_NAME)
+    !CALL construct_elmer_icon_coupling_post_sync( &
+    !     is_main_rank, ELMER_COMP_NAME, ELMER_GRID_NAME)
+    CALL construct_elmer_ebfm_coupling_post_sync( &
+         is_main_rank, ELMER_COMP_NAME, ELMER_GRID_NAME)
 
     ! end of definition phase
     ! * collective operation for all processes that initialised YAC
