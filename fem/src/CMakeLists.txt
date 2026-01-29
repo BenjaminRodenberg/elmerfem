@@ -16,10 +16,9 @@ ENDIF()
 
 SET(prefix "${CMAKE_INSTALL_PREFIX}")
 
-SET(solverlib_SOURCES AddrFunc.F90 Types.F90 Messages.F90
-  NavierStokes.F90 NavierStokesGeneral.F90
-  NavierStokesCylindrical.F90 LoadMod.F90 GeneralUtils.F90 Lists.F90
-  DiffuseConvectiveAnisotropic.F90
+SET(solverlib_SOURCES AddrFunc.F90 Types.F90 Messages.F90 LoadMod.F90
+  GeneralUtils.F90 NavierStokes.F90 NavierStokesGeneral.F90
+  NavierStokesCylindrical.F90 Lists.F90 DiffuseConvectiveAnisotropic.F90
   DiffuseConvectiveGeneralAnisotropic.F90 PElementMaps.F90
   PElementBase.F90 ElementDescription.F90 Integration.F90 ListMatrixArray.F90
   ModelDescription.F90 Stress.F90 StressGeneral.F90
