@@ -1,7 +1,7 @@
 SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
   USE DefUtils, ONLY: ParEnv, GetSolverParams, GetString, GetMesh, GetNOFActive, DefaultVariableAdd
   USE SolverUtils
-  USE elmer_coupling, ONLY: coupling_setup, is_main_rank
+  USE elmer_coupling, ONLY: coupling_setup, is_root_rank
   USE elmer_ebfm_coupling, ONLY: elmer_ebfm_interface, t_ice_field, smb_field, &
                                  runoff_field
   ! USE elmer_icon_coupling, ONLY: elmer_icon_interface, clt_field
@@ -100,8 +100,8 @@ SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
   WRITE(Message,*) 'BEFORE ELMER EBFM INTERFACE'
   CALL INFO(SolverName,Message,Level=3)
   ! couple with EBFM
-  CALL elmer_ebfm_interface(is_main_rank)
-  !CALL elmer_icon_interface(is_main_rank)
+  CALL elmer_ebfm_interface(is_root_rank)
+  !CALL elmer_icon_interface(is_root_rank)
   WRITE(Message,*) 'AFTER ELMER EBFM INTERFACE'
   CALL INFO(SolverName,Message,Level=3)
 

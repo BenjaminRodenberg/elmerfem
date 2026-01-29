@@ -141,16 +141,16 @@ CONTAINS
   END SUBROUTINE construct_elmer_ebfm_coupling
 
   SUBROUTINE construct_elmer_ebfm_coupling_post_sync( &
-    is_main_rank, elmer_comp_name, elmer_grid_name)
+    is_root_rank, elmer_comp_name, elmer_grid_name)
 
-    LOGICAL, INTENT(IN) :: is_main_rank
+    LOGICAL, INTENT(IN) :: is_root_rank
     CHARACTER(LEN=*), INTENT(IN) :: elmer_comp_name
     CHARACTER(LEN=*), INTENT(IN) :: elmer_grid_name
 
     ! after synchronisation or the end of the definition phase YAC can be
     ! queried about various information
 
-    IF (.NOT. is_main_rank) RETURN
+    IF (.NOT. is_root_rank) RETURN
 
     CALL print_field_info(elmer_comp_name, elmer_grid_name, t_ice_field_name)
     CALL print_field_info(elmer_comp_name, elmer_grid_name, smb_field_name)
@@ -204,9 +204,9 @@ CONTAINS
 
   END SUBROUTINE construct_elmer_ebfm_coupling_post_sync
 
-  SUBROUTINE elmer_ebfm_interface(is_main_rank)
+  SUBROUTINE elmer_ebfm_interface(is_root_rank)
 
-    LOGICAL, INTENT(IN) :: is_main_rank
+    LOGICAL, INTENT(IN) :: is_root_rank
 
     INTEGER :: info, err
 
@@ -216,7 +216,7 @@ CONTAINS
     IF (yac_fget_role_from_field_id(t_ice_field_id) == &
         YAC_EXCHANGE_TYPE_TARGET) THEN
 
-      IF (is_main_rank) THEN
+      IF (is_root_rank) THEN
 
         ! get the action executed by YAC in the next get operation called for
         ! the T_ice field and print out some information
@@ -258,7 +258,7 @@ CONTAINS
     IF (yac_fget_role_from_field_id(smb_field_id) == &
         YAC_EXCHANGE_TYPE_TARGET) THEN
 
-      IF (is_main_rank) THEN
+      IF (is_root_rank) THEN
 
         ! get the action executed by YAC in the next get operation called for
         ! the smb field and print out some information
@@ -298,7 +298,7 @@ CONTAINS
     IF (yac_fget_role_from_field_id(runoff_field_id) == &
         YAC_EXCHANGE_TYPE_TARGET) THEN
 
-      IF (is_main_rank) THEN
+      IF (is_root_rank) THEN
 
         ! get the action executed by YAC in the next get operation called for
         ! the runoff field and print out some information
@@ -339,7 +339,7 @@ CONTAINS
     IF (yac_fget_role_from_field_id(surface_height_field_id) == &
         YAC_EXCHANGE_TYPE_SOURCE) THEN
 
-      IF (is_main_rank) THEN
+      IF (is_root_rank) THEN
 
         ! get the action executed by YAC in the next put operation called for
         ! the surface_height field and print out some information
@@ -445,16 +445,16 @@ CONTAINS
   END SUBROUTINE construct_elmer_icon_coupling
 
   SUBROUTINE construct_elmer_icon_coupling_post_sync( &
-    is_main_rank, elmer_comp_name, elmer_grid_name)
+    is_root_rank, elmer_comp_name, elmer_grid_name)
 
-    LOGICAL, INTENT(IN) :: is_main_rank
+    LOGICAL, INTENT(IN) :: is_root_rank
     CHARACTER(LEN=*), INTENT(IN) :: elmer_comp_name
     CHARACTER(LEN=*), INTENT(IN) :: elmer_grid_name
 
     ! after synchronisation or the end of the definition phase YAC can be
     ! queried about various information
 
-    IF (.NOT. is_main_rank) RETURN
+    IF (.NOT. is_root_rank) RETURN
 
     CALL print_field_info(elmer_comp_name, elmer_grid_name, pr_field_name)
     CALL print_field_info(elmer_comp_name, elmer_grid_name, clt_field_name)
@@ -507,9 +507,9 @@ CONTAINS
 
   END SUBROUTINE construct_elmer_icon_coupling_post_sync
 
-  SUBROUTINE elmer_icon_interface(is_main_rank)
+  SUBROUTINE elmer_icon_interface(is_root_rank)
 
-    LOGICAL, INTENT(IN) :: is_main_rank
+    LOGICAL, INTENT(IN) :: is_root_rank
 
     INTEGER :: info, err
 
@@ -518,7 +518,7 @@ CONTAINS
     IF (yac_fget_role_from_field_id(clt_field_id) == &
         YAC_EXCHANGE_TYPE_TARGET) THEN
 
-      IF (is_main_rank) THEN
+      IF (is_root_rank) THEN
 
         ! get the action executed by YAC in the next get operation called for
         ! the total cloud cover field and print out some information
@@ -558,7 +558,7 @@ CONTAINS
     IF (yac_fget_role_from_field_id(pr_field_id) == &
         YAC_EXCHANGE_TYPE_TARGET) THEN
 
-      IF (is_main_rank) THEN
+      IF (is_root_rank) THEN
 
         ! get the action executed by YAC in the next get operation called for
         ! the precipitation flux field and print out some information
@@ -621,8 +621,8 @@ MODULE elmer_coupling
   INTEGER, PARAMETER, PRIVATE :: MAX_CHARLEN = 132
   INTEGER, PARAMETER, PUBLIC :: elmer_coupling_MAX_GROUPNAME_LEN = MAX_CHARLEN
 
-  ! MAIN_RANK defines rank of this component taking care of logging.
-  INTEGER, PARAMETER, PRIVATE :: MAIN_RANK = 0
+  ! ROOT_RANK defines rank of this component taking care of logging.
+  INTEGER, PARAMETER, PRIVATE :: ROOT_RANK = 0
 
   ! TODO: Allow to set component name from outside
   ! CHARACTER(LEN=MAX_CHARLEN) :: ELMER_COMP_NAME
@@ -632,8 +632,8 @@ MODULE elmer_coupling
 
   INTEGER :: comp_id
 
-  ! True if this is the MAIN_RANK of this component.
-  LOGICAL, PUBLIC :: is_main_rank
+  ! True if this is the ROOT_RANK of this component.
+  LOGICAL, PUBLIC :: is_root_rank
 
 CONTAINS
 
@@ -671,7 +671,7 @@ CONTAINS
 
     INTEGER :: ierror
 
-    is_main_rank = (elmer_rank == MAIN_RANK)
+    is_root_rank = (elmer_rank == ROOT_RANK)
 
     ! initialise YAC
     ! * is collective operation on yac_comm
@@ -821,9 +821,9 @@ CONTAINS
     ! construct coupling between Elmer/Ice and ICON (using sychronized
     ! information from all components)
     !CALL construct_elmer_icon_coupling_post_sync( &
-    !     is_main_rank, ELMER_COMP_NAME, ELMER_GRID_NAME)
+    !     is_root_rank, ELMER_COMP_NAME, ELMER_GRID_NAME)
     CALL construct_elmer_ebfm_coupling_post_sync( &
-         is_main_rank, ELMER_COMP_NAME, ELMER_GRID_NAME)
+         is_root_rank, ELMER_COMP_NAME, ELMER_GRID_NAME)
 
     ! end of definition phase
     ! * collective operation for all processes that initialised YAC
