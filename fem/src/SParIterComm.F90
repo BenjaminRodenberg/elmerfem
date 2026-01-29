@@ -3482,7 +3482,7 @@ SUBROUTINE ExchangeSourceVec( SourceMatrix, SplittedMatrix, &
   n = ParEnv % NumOfNeighbours
   IF ( n<= 0 ) RETURN
 
-  oper = OPER_SUM  ! Operator. See Types.F90 for valid values.
+  oper = OPER_SUM  ! Operator. See Types_.F90 for valid values.
   IF ( PRESENT(op) ) oper=op ! Optional input argument for operator.
 
   ALLOCATE( neigh(n) )
