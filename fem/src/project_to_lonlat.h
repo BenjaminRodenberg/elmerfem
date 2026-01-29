@@ -29,37 +29,17 @@
 
   Original Date: 10.6.2025
 */
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
-#include <mpi.h>
-#include <assert.h>
 
-#include <proj.h>
+#ifndef PROJECT_TO_LONLAT_H
+#define PROJECT_TO_LONLAT_H
 
-#include "elmer_grid.h"
+/**
+ * Convert coordinates from EPSG:3413 to longitude/latitude in radians.
+ * 
+ * @param x Array of x coordinates (EPSG:3413), modified in place to longitude in radians.
+ * @param y Array of y coordinates (EPSG:3413), modified in place to latitude in radians.
+ * @param n Number of coordinates in the arrays.
+ */
+void convert_epsg3413_to_lonlat(double * x, double * y, const int n);
 
-void convert2rad(
-  double * x_vertices, double * y_vertices, int nbr_vertices) {
-  // define transformation
-  PJ * P =
-    proj_create_crs_to_crs(
-      PJ_DEFAULT_CTX, "EPSG:3413", "+proj=longlat +datum=WGS84", NULL);
-
-  if (!P) {
-    fputs("failed to create transformation", stderr);
-    MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
-  }
-
-  // transform all vertices
-  for (int i = 0; i < nbr_vertices; ++i) {
-    PJ_COORD src_coord = proj_coord(x_vertices[i], y_vertices[i], 0, 0);
-    PJ_COORD tgt_coord = proj_trans(P, PJ_FWD, src_coord);
-    x_vertices[i] = proj_torad(tgt_coord.lp.lam);
-    y_vertices[i] = proj_torad(tgt_coord.lp.phi);
-  }
-
-  // clean up
-  proj_destroy(P);
-}
+#endif // PROJECT_TO_LONLAT_H

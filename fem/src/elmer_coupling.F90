@@ -736,8 +736,8 @@ CONTAINS
 
     INTERFACE
 
-      SUBROUTINE convert2rad_c(x_vertices, y_vertices, nbr_vertices) &
-        bind ( C, name='convert2rad' )
+      SUBROUTINE convert_epsg3413_to_lonlat_c(x_vertices, y_vertices, nbr_vertices) &
+        bind ( C, name='convert_epsg3413_to_lonlat' )
 
         USE, INTRINSIC :: iso_c_binding, ONLY: C_INT, C_DOUBLE
         
@@ -745,7 +745,7 @@ CONTAINS
         REAL(C_DOUBLE),             INTENT(INOUT) :: x_vertices(*)
         REAL(C_DOUBLE),             INTENT(INOUT) :: y_vertices(*)
 
-      END SUBROUTINE convert2rad_c
+      END SUBROUTINE convert_epsg3413_to_lonlat_c
 
     END INTERFACE
 
@@ -803,8 +803,8 @@ CONTAINS
       y_cells(i) = SUM(y_vertices(this_cell_ids(1:n))) / n
     END DO
 
-    CALL convert2rad_c(x_vertices, y_vertices, nbr_vertices)
-    CALL convert2rad_c(x_cells, y_cells, nbr_cells)
+    CALL convert_epsg3413_to_lonlat_c(x_vertices, y_vertices, nbr_vertices)
+    CALL convert_epsg3413_to_lonlat_c(x_cells, y_cells, nbr_cells)
 
     ! register Elmer grid in YAC
     ! * is defined as an unstructured grid
