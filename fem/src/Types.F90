@@ -45,7 +45,6 @@
 
 MODULE Types
  
-   USE Messages
    USE, INTRINSIC :: ISO_C_BINDING
 #ifdef _OPENMP
    USE omp_lib 
