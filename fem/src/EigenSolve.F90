@@ -696,7 +696,7 @@ CONTAINS
 !------------------------------------------------------------------------------
     SUBROUTINE ExpandEigenVectors( Matrix, EigVectors, NoEigen, dofs )
 
-      USE Types_
+      USE Types
 
       IMPLICIT NONE
 
@@ -2216,7 +2216,7 @@ END SUBROUTINE CheckResidualsComplex
 !------------------------------------------------------------------------------
     FUNCTION EigenMGdot( n, x, y ) RESULT(s)
 !------------------------------------------------------------------------------
-      USE Types_
+      USE Types
       INTEGER :: n
       REAL(KIND=dp) :: s, x(:), y(:)
       

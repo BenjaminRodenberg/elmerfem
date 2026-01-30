@@ -1383,7 +1383,7 @@ CONTAINS
        INTERFACE
          SUBROUTINE InterpolateMeshToMeshQ( OldMesh, NewMesh, OldVariables, NewVariables, &
              UseQuadrantTree, Projector, MaskName, FoundNodes, NewMaskPerm, KeepUnfoundNodes )
-           USE Types_
+           USE Types
            TYPE(Variable_t), POINTER, OPTIONAL :: OldVariables, NewVariables
            TYPE(Mesh_t), TARGET  :: OldMesh, NewMesh
            LOGICAL, OPTIONAL :: UseQuadrantTree,FoundNodes(:)
@@ -1439,7 +1439,7 @@ CONTAINS
       INTERFACE
         SUBROUTINE InterpolateMeshToMesh( OldMesh, NewMesh, OldVariables, &
             NewVariables, UseQuadrantTree, Projector, MaskName, UnfoundNodes )
-          USE Types_
+          USE Types
           TYPE(Variable_t), POINTER, OPTIONAL :: OldVariables, NewVariables
           TYPE(Mesh_t), TARGET  :: OldMesh, NewMesh
           LOGICAL, OPTIONAL :: UseQuadrantTree
@@ -4962,7 +4962,7 @@ CONTAINS
      ! cyclic dependence.
      INTERFACE 
        SUBROUTINE Ip2DgFieldInElement( Mesh, Parent, nip, fip, np, fdg )
-         USE Types_
+         USE Types
          TYPE(Mesh_t), POINTER :: Mesh
          TYPE(Element_t), POINTER :: Parent
          INTEGER :: nip, np

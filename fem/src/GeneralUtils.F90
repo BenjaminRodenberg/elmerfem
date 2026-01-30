@@ -2616,7 +2616,7 @@ END MODULE GeneralUtils
 !---------------------------------------------------------
 MODULE AscBinOutputUtils
   
-  USE Types_
+  USE Types
   USE Messages, ONLY: Message, Info, Warn, Error, Fatal
 
   IMPLICIT NONE
