@@ -549,19 +549,19 @@ CONTAINS
 
   INTERFACE
      SUBROUTINE cholmod_ffree(chol) BIND(c,NAME="cholmod_ffree")
-       USE Types_
+       USE Types
        INTEGER(KIND=AddrInt) :: chol
      END SUBROUTINE cholmod_ffree
 
      FUNCTION cholmod_ffactorize(n,rows,cols,vals,cmplx) RESULT(chol) BIND(c,NAME="cholmod_ffactorize")
-        USE Types_
+        USE Types
         INTEGER :: n, cmplx, Rows(*), Cols(*)
         REAL(KIND=dp) :: Vals(*)
         INTEGER(KIND=dp) :: chol
      END FUNCTION cholmod_ffactorize
 
      SUBROUTINE cholmod_fsolve(chol, n, x,b) BIND(c,NAME="cholmod_fsolve")
-        USE Types_
+        USE Types
         REAL(KIND=dp) :: x(*), b(*)
         INTEGER :: n
         INTEGER(KIND=dp) :: chol
@@ -642,20 +642,20 @@ CONTAINS
 
   INTERFACE
      FUNCTION spqr_ffree(chol) RESULT(stat) BIND(c,NAME="spqr_ffree")
-       USE Types_
+       USE Types
        INTEGER :: stat
        INTEGER(KIND=AddrInt) :: chol
      END FUNCTION spqr_ffree
 
      FUNCTION spqr_ffactorize(n,rows,cols,vals) RESULT(chol) BIND(c,NAME="spqr_ffactorize")
-       USE Types_
+       USE Types
        INTEGER :: n, rows(*), cols(*)
        REAL(KIND=dp) :: vals(*)
        INTEGER(KIND=AddrInt) :: chol
      END FUNCTION spqr_ffactorize
 
      SUBROUTINE spqr_fsolve(chol, n, x,b) BIND(c,NAME="spqr_fsolve")
-       USE Types_
+       USE Types
        REAL(KIND=dp) :: x(*), b(*)
        INTEGER :: n
        INTEGER(KIND=AddrInt) :: chol
@@ -2289,7 +2289,7 @@ CONTAINS
       interface
         subroutine solve_superlu( iopt, nprocs, n, nnz, nrhs, values, cols, &
                      rows, b, ldb, factors, iinfo )
-            use types_
+            use types
             integer :: iopt, nprocs, n, nnz, nrhs, cols(*), rows(*), ldb, iinfo
             real(kind=dp) :: values(*), b(*)
             integer(kind=addrint) :: factors
@@ -2508,7 +2508,7 @@ CONTAINS
     INTERFACE
       SUBROUTINE pardiso(pt, maxfct, mnum, mtype, phase, n, &
                            values, rows, cols, perm, nrhs, iparm, msglvl, b, x, ierror)
-        USE Types_
+        USE Types
         IMPLICIT NONE
         REAL(KIND=dp) :: values(*), b(*), x(*)
         INTEGER(KIND=AddrInt) :: pt(*)
@@ -2517,7 +2517,7 @@ CONTAINS
       END SUBROUTINE pardiso
 
       SUBROUTINE pardisoinit(pt, mtype, iparm)
-        USE Types_
+        USE Types
         IMPLICIT NONE
         INTEGER(KIND=AddrInt) :: pt(*)
         INTEGER :: mtype
@@ -2736,7 +2736,7 @@ CONTAINS
       INTERFACE
         SUBROUTINE pardiso(pt, maxfct, mnum, mtype, phase, n, &
           values, rows, cols, idum, nrhs, iparm, msglvl, b, x, ierror, dparm)
-          USE Types_
+          USE Types
           REAL(KIND=dp) :: values(*), b(*), x(*), dparm(*)
           INTEGER(KIND=AddrInt) :: pt(*)
           INTEGER :: idum(*), nrhs, iparm(*), msglvl, ierror
@@ -2744,7 +2744,7 @@ CONTAINS
         END SUBROUTINE pardiso
 
         SUBROUTINE pardisoinit(pt,mtype,solver,iparm,dparm,ierror)
-          USE Types_
+          USE Types
           INTEGER :: mtype, iparm(*),ierror,solver
           REAL(KIND=dp) :: dparm(*)
           INTEGER(KIND=AddrInt) :: pt(*)
@@ -2932,7 +2932,7 @@ CONTAINS
     INTERFACE
         SUBROUTINE cluster_sparse_solver(pt, maxfct, mnum, mtype, phase, n, &
               values, rows, cols, perm, nrhs, iparm, msglvl, b, x, comm, ierror)
-            USE Types_
+            USE Types
             REAL(KIND=dp) :: values(*), b(*), x(*)
             INTEGER(KIND=AddrInt) :: pt(*)
             INTEGER :: perm(*), nrhs, iparm(*), msglvl, ierror
@@ -3027,7 +3027,7 @@ CONTAINS
     INTERFACE
         SUBROUTINE cluster_sparse_solver(pt, maxfct, mnum, mtype, phase, n, &
               values, rows, cols, perm, nrhs, iparm, msglvl, b, x, comm, ierror)
-            USE Types_
+            USE Types
             REAL(KIND=dp) :: values(*), b(*), x(*)
             INTEGER(KIND=AddrInt) :: pt(*)
             INTEGER :: perm(*), nrhs, iparm(*), msglvl, ierror
@@ -3306,7 +3306,7 @@ CONTAINS
         SUBROUTINE cluster_sparse_solver(pt, maxfct, mnum, mtype, phase, n, &
                            values, rows, cols, perm, nrhs, iparm, &
                            msglvl, b, x, comm, ierror)
-            USE Types_
+            USE Types
             REAL(KIND=dp) :: values(*), b(*), x(*)
             INTEGER(KIND=AddrInt) :: pt(*)
             INTEGER :: perm(*), nrhs, iparm(*), msglvl, ierror

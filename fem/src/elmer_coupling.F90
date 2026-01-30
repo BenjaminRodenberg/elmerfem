@@ -702,7 +702,7 @@ CONTAINS
     USE :: elmer_icon_coupling
     USE, INTRINSIC :: iso_c_binding, ONLY: C_INT, C_DOUBLE
 
-    USE :: Types_, ONLY: Mesh_t, Element_t, dp
+    USE :: Types, ONLY: Mesh_t, Element_t, dp
 
     IMPLICIT NONE
 

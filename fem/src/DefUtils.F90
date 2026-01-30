@@ -45,7 +45,7 @@
 !> this module should provide all the needed functionality for typical finite
 !> element procedures.  
 !--------------------------------------------------------------------------------
-MODULE DefUtils_
+MODULE DefUtils
 
 #include "../config.h"
 
@@ -3471,7 +3471,7 @@ CONTAINS
 
      INTERFACE
        SUBROUTINE SolverActivate_x(Model,Solver,dt,Transient)
-         USE Types_
+         USE Types
          TYPE(Model_t)::Model
          TYPE(Solver_t),POINTER::Solver
          REAL(KIND=dp) :: dt
@@ -8037,7 +8037,7 @@ CONTAINS
   END SUBROUTINE CheckColourings
 
 
-END MODULE DefUtils_
+END MODULE DefUtils
 
 !> \}  // end of subgroup
 !> \}  // end of group
