@@ -43,7 +43,7 @@
 
 #include "../config.h"
 
-MODULE Types
+MODULE Types_
  
    USE, INTRINSIC :: ISO_C_BINDING
 #ifdef _OPENMP
@@ -1151,6 +1151,6 @@ MODULE Types
 
     CHARACTER(len=MAX_NAME_LEN) :: ExecID
 !------------------------------------------------------------------------------
-END MODULE Types
+END MODULE Types_
 !------------------------------------------------------------------------------
 !> \}

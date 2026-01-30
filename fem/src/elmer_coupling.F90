@@ -702,7 +702,9 @@ CONTAINS
     USE :: elmer_icon_coupling
     USE, INTRINSIC :: iso_c_binding, ONLY: C_INT, C_DOUBLE
 
-    USE :: Types, ONLY: Mesh_t, Element_t, dp
+    ! need to use Types_ without Messages because of circular dependency
+    ! originating from coupling_finalize in Messages Fatal
+    USE :: Types_, ONLY: Mesh_t, Element_t, dp
 
     IMPLICIT NONE
 
