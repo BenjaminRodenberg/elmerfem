@@ -59,6 +59,10 @@ SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
      CALL FATAL(SolverName,'No keyword >Couple To ICON< found in yac2elmer solver')
   END IF
 
+  IF (.NOT. (couple_to_ebfm .OR. couple_to_icon)) THEN
+    CALL FATAL(SolverName,'At least one of >Couple To EBFM< or >Couple To ICON< must be TRUE')
+  END IF
+
   ! TODO: remove this check when ICON coupling is implemented
   IF (couple_to_icon) THEN
     CALL FATAL(SolverName,'>Couple To ICON< is currently not supported. Please set to FALSE')
