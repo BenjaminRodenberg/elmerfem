@@ -260,7 +260,6 @@ CONTAINS
 
     INTEGER :: info, err
 
-    PRINT *, "IN EBFM_INTERFACE"
     ! checks whether the T_ice field is defined as a target in a couple
     IF (yac_fget_role_from_field_id(t_ice_field_id) == &
         YAC_EXCHANGE_TYPE_TARGET) THEN
