@@ -38,7 +38,6 @@
 
 MODULE LoadMod
     USE Types
-    USE Messages, ONLY: Error
     USE, INTRINSIC :: ISO_C_BINDING
     USE huti_interfaces
     IMPLICIT NONE

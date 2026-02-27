@@ -57,8 +57,6 @@
 
 MODULE EigenSolve
 
-   USE Messages, ONLY: Info, Error, Fatal
-
    IMPLICIT NONE
 
 CONTAINS

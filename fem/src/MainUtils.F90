@@ -71,9 +71,6 @@ MODULE MainUtils
       GetBodyForce, GetBC, Default2ndOrderTime, DefaultFinishBulkAssembly, &
       DefaultUpdateMass, DefaultFinishBoundaryAssembly, DefaultInitialize, &
       DefaultUpdateDamp, DefaultFinishAssembly, Default1stOrderTime
-
-  USE Messages, ONLY : OutputLevelMask, MaxOutputPE, MinOutputPE
-
 !------------------------------------------------------------------------------
   IMPLICIT NONE
 !------------------------------------------------------------------------------

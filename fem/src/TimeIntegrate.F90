@@ -44,7 +44,6 @@
 MODULE TimeIntegrate
 
    USE Types
-   USE Messages, ONLY: Warn, Fatal, Message
 
    IMPLICIT NONE
 

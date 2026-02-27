@@ -47,7 +47,6 @@
 
 MODULE PElementMaps
   USE Types
-  USE Messages, ONLY: Info, Warn, Fatal, Message
   Use GeneralUtils, ONLY : I2S
 
   IMPLICIT NONE

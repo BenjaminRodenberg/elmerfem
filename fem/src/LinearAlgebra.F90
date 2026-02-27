@@ -48,8 +48,6 @@
 MODULE LinearAlgebra
 
   USE Types
-  USE Messages, ONLY: Message, Error, Fatal
-
   IMPLICIT NONE
 
  CONTAINS
