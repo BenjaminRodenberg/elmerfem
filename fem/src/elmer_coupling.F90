@@ -429,7 +429,7 @@ END MODULE elmer_ebfm_coupling
 
 MODULE elmer_icon_coupling
 
-  USE yac, ONLY: yac_fdef_field, yac_fget_role_from_field_id, &
+  USE yac, ONLY: yac_fdef_field, yac_fdef_field_mask, yac_fget_role_from_field_id, &
     yac_fget_field_datetime, yac_fget_field_role, yac_fget_field_timestep, &
     yac_ffield_has_metadata, yac_fget_field_metadata, yac_fget_points_size, &
     yac_fget_field_source, yac_fget, yac_fput, yac_fupdate, yac_fget_action, &
@@ -462,35 +462,33 @@ MODULE elmer_icon_coupling
 CONTAINS
 
   SUBROUTINE construct_elmer_icon_coupling( &
-        comp_id, corner_point_id, timestepstring, cell_point_id)
+        comp_id, corner_point_id, timestepstring, cell_point_id, boundary_corner_mask_id)
 
     INTEGER, INTENT(IN) :: comp_id
     INTEGER, INTENT(IN) :: corner_point_id
     INTEGER, INTENT(IN) :: cell_point_id
     CHARACTER(LEN=*), INTENT(IN) :: timestepstring
+    INTEGER, INTENT(IN) :: boundary_corner_mask_id
 
-    INTEGER :: nbr_vertices, nbr_cells
+    INTEGER :: nbr_vertices
 
     nbr_vertices = yac_fget_points_size(corner_point_id)
-    nbr_cells = yac_fget_points_size(cell_point_id)
 
     ! register ocean temperature field in YAC
-    CALL yac_fdef_field( &
-      t_oce_field_name, comp_id, (/corner_point_id/), 1, t_oce_collection_size, &
-      timestepstring, YAC_TIME_UNIT_HOUR, t_oce_field_id);
+    CALL yac_fdef_field_mask( &
+      t_oce_field_name, comp_id, (/corner_point_id/), (/boundary_corner_mask_id/), 1, &
+      t_oce_collection_size, timestepstring, YAC_TIME_UNIT_HOUR, t_oce_field_id)
 
     ! allocate and initialise ocean temperature field buffer
     ALLOCATE(t_oce_field(nbr_vertices, t_oce_collection_size))
-    !clt_field = 0.0
 
     ! register ocean salinity field in YAC
-    CALL yac_fdef_field( &
-      sal_oce_field_name, comp_id, (/corner_point_id/), 1, sal_oce_collection_size, &
-      timestepstring, YAC_TIME_UNIT_HOUR, sal_oce_field_id)
+    CALL yac_fdef_field_mask( &
+      sal_oce_field_name, comp_id, (/corner_point_id/), (/boundary_corner_mask_id/), 1, &
+      sal_oce_collection_size, timestepstring, YAC_TIME_UNIT_HOUR, sal_oce_field_id)
 
     ! allocate and initialise ocean salinity field buffer
     ALLOCATE(sal_oce_field(nbr_vertices, sal_oce_collection_size))
-    !pr_field = 0.0
 
   END SUBROUTINE construct_elmer_icon_coupling
 
@@ -778,13 +776,13 @@ CONTAINS
   !> @param timestepstring Timestep configuration string for YAC
   !> @param couple_to_ebfm_in Enable coupling to EBFM
   !> @param couple_to_icon_in Enable coupling to ICON
-  !> @param boundary_cell_mask Logical mask indicating boundary cells
+  !> @param boundary_corner_mask Logical mask indicating boundary corners
   SUBROUTINE coupling_setup(lon_vertices, lat_vertices, lon_cells, lat_cells, &
                             cell_to_vertex, num_vertices_per_cell, &
                             cell_ids, vertex_ids, &
                             grid_crs, timestepstring, &
                             couple_to_ebfm_in, couple_to_icon_in, &
-                            boundary_cell_mask)
+                            boundary_corner_mask)
 
     USE, INTRINSIC :: iso_c_binding, ONLY: C_INT, C_DOUBLE, C_CHAR
 
@@ -802,10 +800,10 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(IN) :: grid_crs
     CHARACTER(LEN=*), INTENT(IN) :: timestepstring
     LOGICAL, INTENT(IN) :: couple_to_ebfm_in, couple_to_icon_in
-    LOGICAL, INTENT(IN) :: boundary_cell_mask(:)
+    LOGICAL, INTENT(IN) :: boundary_corner_mask(:)
 
     ! Local variables
-    INTEGER :: grid_id, corner_point_id, cell_point_id, boundary_cell_mask_id
+    INTEGER :: grid_id, corner_point_id, cell_point_id, boundary_corner_mask_id
     INTEGER(KIND=C_INT) :: nbr_vertices, nbr_cells
 
     ! Store coupling flags in module variables for later use
@@ -838,14 +836,15 @@ CONTAINS
     CALL yac_fdef_points( &
       grid_id, nbr_cells, YAC_LOCATION_CELL, lon_cells, lat_cells, cell_point_id)
 
-    ! register boundary cell mask in YAC
+    ! register boundary corner mask in YAC
     CALL yac_fdef_mask_named( &
-      grid_id, nbr_cells, YAC_LOCATION_CELL, boundary_cell_mask, &
-      "boundary_cell_mask", boundary_cell_mask_id)
+      grid_id, nbr_vertices, YAC_LOCATION_CORNER, boundary_corner_mask, &
+      "boundary_corner_mask", boundary_corner_mask_id)
 
     ! construct coupling between Elmer/Ice and ICON
     IF (couple_to_icon) THEN
-        CALL construct_elmer_icon_coupling(comp_id, corner_point_id, timestepstring, cell_point_id)
+        CALL construct_elmer_icon_coupling( &
+          comp_id, corner_point_id, timestepstring, cell_point_id, boundary_corner_mask_id)
     END IF
     IF (couple_to_ebfm) THEN
         CALL construct_elmer_ebfm_coupling(comp_id, corner_point_id, timestepstring, cell_point_id)
