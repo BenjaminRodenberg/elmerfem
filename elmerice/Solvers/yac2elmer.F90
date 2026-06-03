@@ -348,7 +348,8 @@ SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
               cell_to_vertex, num_vertices_per_cell, &
               cell_ids, vertex_ids, &
               TRIM(grid_crs), TRIM(ADJUSTL(I2S(coupling_hours))), &
-              couple_to_ebfm, couple_to_icon)
+              couple_to_ebfm, couple_to_icon, &
+              boundary_cell_mask)
 
     DEALLOCATE(lon_vertices, lat_vertices, lon_cells, lat_cells)
     DEALLOCATE(cell_to_vertex, num_vertices_per_cell, cell_ids, vertex_ids)
