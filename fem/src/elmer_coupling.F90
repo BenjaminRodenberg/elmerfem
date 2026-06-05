@@ -484,27 +484,25 @@ CONTAINS
 
   SUBROUTINE construct_elmer_icon_coupling( &
         comp_id, corner_point_id, timestepstring, cell_point_id, &
-        boundary_corner_mask_id, boundary_corner_mask_name, &
-        elmer_comp_name, elmer_grid_name)
+        boundary_corner_mask_name, elmer_comp_name, elmer_grid_name)
 
     INTEGER, INTENT(IN) :: comp_id
     INTEGER, INTENT(IN) :: corner_point_id
     INTEGER, INTENT(IN) :: cell_point_id
     CHARACTER(LEN=*), INTENT(IN) :: timestepstring
-    INTEGER, INTENT(IN) :: boundary_corner_mask_id
     CHARACTER(LEN=*), INTENT(IN) :: boundary_corner_mask_name
     CHARACTER(LEN=*), INTENT(IN) :: elmer_comp_name
     CHARACTER(LEN=*), INTENT(IN) :: elmer_grid_name
 
     INTEGER :: nbr_vertices
 
-    REAL(8) :: arc_length, earth_radius, tol_radians
+    REAL(8) :: nnn_max_search_distance, nnn_scale
 
     nbr_vertices = yac_fget_points_size(corner_point_id)
 
     ! register ocean temperature field in YAC
-    CALL yac_fdef_field_mask( &
-      t_oce_field_name, comp_id, (/corner_point_id/), (/boundary_corner_mask_id/), 1, &
+    CALL yac_fdef_field( &
+      t_oce_field_name, comp_id, (/corner_point_id/), 1, &
       t_oce_collection_size, timestepstring, YAC_TIME_UNIT_HOUR, t_oce_field_id)
 
     ! allocate and initialise ocean temperature field buffer
@@ -539,13 +537,12 @@ CONTAINS
     ! match in the src field are considered. Both fields use the same grid, so
     ! the non-boundary points should remain unset and will be filled with the
     ! creep algorithm in a second step.
-    arc_length = 50.0_8  ! 50m as tolerance
-    earth_radius = 6371000.0_8  ! Mean Earth radius in meters
-    tol_radians = arc_length / earth_radius
+    nnn_max_search_distance = 1e-5 ! around 50m
+    nnn_scale = 0.0
 
     ! Map boundary points with NNN
     CALL yac_fadd_interp_stack_config_nnn( &
-      interp_stack_config_id, YAC_NNN_AVG, tol_radians, 1)
+      interp_stack_config_id, YAC_NNN_AVG, nnn_max_search_distance, nnn_scale)
     ! Set remaining points with creep algorithm
     CALL yac_fadd_interp_stack_config_creep( &
       interp_stack_config_id, -1)
@@ -932,8 +929,7 @@ CONTAINS
     IF (couple_to_icon) THEN
         CALL construct_elmer_icon_coupling( &
           comp_id, corner_point_id, timestepstring, cell_point_id, &
-          boundary_corner_mask_id, BOUNDARY_CORNER_MASK_NAME, &
-          ELMER_COMP_NAME, ELMER_GRID_NAME)
+          BOUNDARY_CORNER_MASK_NAME, ELMER_COMP_NAME, ELMER_GRID_NAME)
     END IF
     IF (couple_to_ebfm) THEN
         CALL construct_elmer_ebfm_coupling(comp_id, corner_point_id, timestepstring, cell_point_id)
