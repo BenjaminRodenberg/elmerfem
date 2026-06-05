@@ -433,7 +433,8 @@ MODULE elmer_icon_coupling
   USE yac, ONLY: yac_fdef_field, yac_fdef_field_mask, yac_fget_role_from_field_id, &
     yac_fget_field_datetime, yac_fget_field_role, yac_fget_field_timestep, &
     yac_ffield_has_metadata, yac_fget_field_metadata, yac_fget_points_size, &
-    yac_fget_field_source, yac_fget, yac_fput, yac_fupdate, yac_fget_action, &
+    yac_fget_field_source, yac_fget, yac_fput, yac_fexchange, &
+    yac_fupdate, yac_fget_action, &
     yac_fdef_couple, yac_string, &
     YAC_TIME_UNIT_HOUR, &
     YAC_ACTION_COUPLING, YAC_ACTION_GET_FOR_RESTART, &
@@ -702,7 +703,8 @@ CONTAINS
 
       CALL yac_fexchange( &
         salinity_boundary_field_id, salinity_field_id, &
-        SIZE(salinity_coast_field, 1), SIZE(salinity_field, 1), SIZE(salinity_field, 2), &
+        SIZE(salinity_coast_field, 1), SIZE(salinity_field, 1), &
+        SIZE(salinity_coast_field, 2), &
         salinity_coast_field, salinity_field, &
         info, info, err)
 
