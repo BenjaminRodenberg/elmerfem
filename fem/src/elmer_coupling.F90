@@ -556,6 +556,8 @@ CONTAINS
       timestepstring, YAC_TIME_UNIT_HOUR, YAC_REDUCTION_TIME_NONE, &
       interp_stack_config_id, &
       src_mask_names=(/yac_string(boundary_corner_mask_name)/))
+      
+    CALL yac_ffree_interp_stack_config(interp_stack_config_id)
 
     ALLOCATE(salinity_field(nbr_vertices, salinity_collection_size))
 
