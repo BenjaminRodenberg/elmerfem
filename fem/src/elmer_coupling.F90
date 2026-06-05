@@ -498,6 +498,8 @@ CONTAINS
 
     INTEGER :: nbr_vertices
 
+    REAL(8) :: arc_length, earth_radius, tol_radians
+
     nbr_vertices = yac_fget_points_size(corner_point_id)
 
     ! register ocean temperature field in YAC
@@ -533,8 +535,13 @@ CONTAINS
 
     CALL yac_fget_interp_stack_config(interp_stack_config_id)
 
+    arc_length = 50.0_8  ! 50m as tolerance
+    earth_radius = 6371000.0_8  ! Mean Earth radius in meters
+
+    tol_radians = arc_length / earth_radius
+
     CALL yac_fadd_interp_stack_config_nnn( &
-      interp_stack_config_id, YAC_NNN_AVG, 1, 0)
+      interp_stack_config_id, YAC_NNN_AVG, 1, tol_radians)
     CALL yac_fadd_interp_stack_config_creep( &
       interp_stack_config_id, -1)
 
