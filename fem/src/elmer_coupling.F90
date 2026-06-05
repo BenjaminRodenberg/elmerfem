@@ -535,13 +535,18 @@ CONTAINS
 
     CALL yac_fget_interp_stack_config(interp_stack_config_id)
 
+    ! Use a very small search distance to ensure only neighbors with a direct
+    ! match in the src field are considered. Both fields use the same grid, so
+    ! the non-boundary points should remain unset and will be filled with the
+    ! creep algorithm in a second step.
     arc_length = 50.0_8  ! 50m as tolerance
     earth_radius = 6371000.0_8  ! Mean Earth radius in meters
-
     tol_radians = arc_length / earth_radius
 
+    ! Map boundary points with NNN
     CALL yac_fadd_interp_stack_config_nnn( &
-      interp_stack_config_id, YAC_NNN_AVG, 1, tol_radians)
+      interp_stack_config_id, YAC_NNN_AVG, tol_radians, 1)
+    ! Set remaining points with creep algorithm
     CALL yac_fadd_interp_stack_config_creep( &
       interp_stack_config_id, -1)
 
