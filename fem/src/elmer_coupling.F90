@@ -542,7 +542,7 @@ CONTAINS
 
     ! Map boundary points with NNN
     CALL yac_fadd_interp_stack_config_nnn( &
-      interp_stack_config_id, YAC_NNN_AVG, nnn_max_search_distance, nnn_scale)
+      interp_stack_config_id, YAC_NNN_AVG, 1, nnn_max_search_distance, nnn_scale)
     ! Set remaining points with creep algorithm
     CALL yac_fadd_interp_stack_config_creep( &
       interp_stack_config_id, -1)
