@@ -144,7 +144,8 @@ SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
   USE elmer_coupling, ONLY: coupling_setup, is_root_rank
   USE elmer_ebfm_coupling, ONLY: elmer_ebfm_interface, t_ice_field, smb_field, &
                                  runoff_field, surface_height_field
-  USE elmer_icon_coupling, ONLY: elmer_icon_interface, t_oce_field, salinity_field
+  USE elmer_icon_coupling, ONLY: elmer_icon_interface, t_oce_field, &
+                                 salinity_coast_field
 
   IMPLICIT NONE
 
@@ -426,7 +427,7 @@ SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
       ! write over values for nodes
       DO i=1, Mesh % NumberOfNodes
         t_oceVar % Values(t_oceVar % Perm(i)) = t_oce_field(i,1)
-        sal_oceVar % Values(sal_oceVar % Perm(i)) = salinity_boundary_field(i,1)
+        sal_oceVar % Values(sal_oceVar % Perm(i)) = salinity_coast_field(i,1)
       END DO
       ! TODO: stub implementation for ICON coupling
       ! CALL elmer_icon_interface(is_root_rank)
