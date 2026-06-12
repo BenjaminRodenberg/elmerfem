@@ -603,31 +603,25 @@ CONTAINS
         src_field_name = field_name
 #endif
 
-        IF (yac_fget_field_role( &
-              elmer_comp_name, elmer_grid_name, field_name) == &
-              YAC_EXCHANGE_TYPE_TARGET) THEN
+        src_field_timestep = &
+          yac_fget_field_timestep( &
+            src_comp_name, src_grid_name, src_field_name)
 
-          src_field_timestep = &
-            yac_fget_field_timestep( &
-              elmer_comp_name, elmer_grid_name, src_field_name)
-
-          IF (yac_ffield_has_metadata( &
-                src_comp_name, src_grid_name, src_field_name)) THEN
-            src_field_metadata = &
-              yac_fget_field_metadata( &
-                src_comp_name, src_grid_name, src_field_name)
-          ELSE
-            src_field_metadata = "N/A"
-          END IF
-
-          PRINT *, "ELMER: field ", field_name, ":"
-          PRINT *, "ELMER:  - source:"
-          PRINT *, "ELMER:    - component: ", src_comp_name
-          PRINT *, "ELMER:    - grid:      ", src_grid_name
-          PRINT *, "ELMER:    - timestep:  ", src_field_timestep
-          PRINT *, "ELMER:    - metadata:  ", src_field_metadata
-
+        IF (yac_ffield_has_metadata( &
+              src_comp_name, src_grid_name, src_field_name)) THEN
+          src_field_metadata = &
+            yac_fget_field_metadata( &
+              src_comp_name, src_grid_name, src_field_name)
+        ELSE
+          src_field_metadata = "N/A"
         END IF
+
+        PRINT *, "ELMER: field ", field_name, ":"
+        PRINT *, "ELMER:  - source:"
+        PRINT *, "ELMER:    - component: ", src_comp_name
+        PRINT *, "ELMER:    - grid:      ", src_grid_name
+        PRINT *, "ELMER:    - timestep:  ", src_field_timestep
+        PRINT *, "ELMER:    - metadata:  ", src_field_metadata
 
       END IF
 
