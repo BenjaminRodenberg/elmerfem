@@ -7,6 +7,7 @@ SUBROUTINE collect_coupling_grid_data(ThisMesh, lon_vertices, lat_vertices, &
   USE Types, ONLY: Mesh_t, Element_t, dp
   USE DefUtils, ONLY: GetBoundaryEdgeIndex
   USE Messages, ONLY: FATAL
+  USE MeshUtils, ONLY: FindMeshEdges
   USE ProjUtils, ONLY: xy2LonLat
 
   IMPLICIT NONE
@@ -49,6 +50,9 @@ SUBROUTINE collect_coupling_grid_data(ThisMesh, lon_vertices, lat_vertices, &
     cell_ids(i) = element % GElementIndex
     num_vertices_per_cell(i) = element % Type % NumberOfNodes
   END DO
+
+  ! Ensure edge tables are built (needed for GetBoundaryEdgeIndex)
+  IF (.NOT. ASSOCIATED(ThisMesh % Edges)) CALL FindMeshEdges(ThisMesh)
 
   ! Mark only true physical domain-boundary cells; partition-only boundaries stay false.
   DO bnd_elem_idx = ThisMesh % NumberOfBulkElements + 1, &
