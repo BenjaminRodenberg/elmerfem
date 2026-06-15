@@ -145,7 +145,7 @@ SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
   USE elmer_ebfm_coupling, ONLY: elmer_ebfm_interface, t_ice_field, smb_field, &
                                  runoff_field, surface_height_field
   USE elmer_icon_coupling, ONLY: elmer_icon_interface, t_oce_field, &
-                                 salinity_coast_field
+                                 sal_oce_pre_field
 
   IMPLICIT NONE
 
@@ -371,7 +371,7 @@ SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
         sal_ocePerm(i) = i
       END DO
       CALL DefaultVariableAdd('temp_oce', dofs=1, Perm = t_ocePerm)
-      CALL DefaultVariableAdd('salinity_boundary', dofs=1, Perm = sal_ocePerm)
+      CALL DefaultVariableAdd('sal_oce_post', dofs=1, Perm = sal_ocePerm)
 
     END IF
 
@@ -420,14 +420,14 @@ SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
       CALL elmer_icon_interface(is_root_rank)
       CALL INFO(SolverName, 'AFTER ELMER ICON-O INTERFACE', Level=3)
       t_oceVar => VariableGet( Mesh % Variables, 'temp_oce' )
-      sal_oceVar => VariableGet( Mesh % Variables, 'salinity_boundary' )
+      sal_oceVar => VariableGet( Mesh % Variables, 'sal_oce_post' )
       IF ((.NOT.ASSOCIATED(t_oceVar)) .OR. (.NOT.ASSOCIATED(sal_oceVar))) THEN
         CALL FATAL(SolverName,'Elmer variables not associated')
       END IF
       ! write over values for nodes
       DO i=1, Mesh % NumberOfNodes
         t_oceVar % Values(t_oceVar % Perm(i)) = t_oce_field(i,1)
-        sal_oceVar % Values(sal_oceVar % Perm(i)) = salinity_coast_field(i,1)
+        sal_oceVar % Values(sal_oceVar % Perm(i)) = sal_oce_pre_field(i,1)
       END DO
       ! TODO: stub implementation for ICON coupling
       ! CALL elmer_icon_interface(is_root_rank)

@@ -460,25 +460,26 @@ MODULE elmer_icon_coupling
 
   ! Salinity field received from ICON; only mapped onto boundary region via mask
   INTEGER :: sal_oce_coast_field_id = -1
-  CHARACTER(LEN=*), PARAMETER :: sal_oce_coast_field_name = "salinity_boundary"
+  CHARACTER(LEN=*), PARAMETER :: sal_oce_field_name = "sal_oce"
 
   ! Fields for internal mapping from boundary region to internal domain
   ! Source
-  INTEGER :: salinity_boundary_field_id = -1
-  CHARACTER(LEN=*), PARAMETER :: salinity_boundary_field_name = &
-    "salinity_boundary_internal"
+  INTEGER :: sal_oce_pre_field_id = -1
+  CHARACTER(LEN=*), PARAMETER :: sal_oce_pre_field_name = &
+    "sal_oce_pre"
   ! Target
-  INTEGER :: salinity_field_id = -1
-  CHARACTER(LEN=*), PARAMETER :: salinity_field_name = "salinity"
+  INTEGER :: sal_oce_post_field_id = -1
+  CHARACTER(LEN=*), PARAMETER :: sal_oce_post_field_name = "sal_oce_post"
 
-  INTEGER :: salinity_collection_size = 1
+  ! All fields with sal_oce prefix use the same collection size.
+  INTEGER :: sal_oce_collection_size = 1
 
   INTEGER :: interp_stack_config_id = -1
 
-  ! Buffer for receiving salinity on boundary from ICON
-  DOUBLE PRECISION, PUBLIC, ALLOCATABLE :: salinity_coast_field(:,:)
-  ! Buffer for salinity on internal domain
-  DOUBLE PRECISION, PUBLIC, ALLOCATABLE :: salinity_field(:,:)
+  ! Buffer for receiving `sal_oce` from ICON; used as input for creep mapping
+  DOUBLE PRECISION, PUBLIC, ALLOCATABLE :: sal_oce_pre_field(:,:)
+  ! Buffer for output of creep mapping on internal domain
+  DOUBLE PRECISION, PUBLIC, ALLOCATABLE :: sal_oce_post_field(:,:)
 
 CONTAINS
 
@@ -510,9 +511,9 @@ CONTAINS
 
     ! register ocean salinity field in YAC (masked on boundary)
     CALL yac_fdef_field( &
-      sal_oce_coast_field_name, comp_id, (/corner_point_id/), 1, &
-      salinity_collection_size, timestepstring, YAC_TIME_UNIT_HOUR, &
-      sal_oce_coast_field_id)
+      sal_oce_field_name, comp_id, (/corner_point_id/), 1, &
+      sal_oce_collection_size, timestepstring, YAC_TIME_UNIT_HOUR, &
+      sal_oce_field_id)
 
     ALLOCATE(salinity_coast_field(nbr_vertices, salinity_collection_size))
 
@@ -522,14 +523,14 @@ CONTAINS
     ! internal domain)
 
     CALL yac_fdef_field( &
-      salinity_boundary_field_name, comp_id, (/corner_point_id/), 1, &
-      salinity_collection_size, timestepstring, YAC_TIME_UNIT_HOUR, &
-      salinity_boundary_field_id)
+      sal_oce_pre_field_name, comp_id, (/corner_point_id/), 1, &
+      sal_oce_collection_size, timestepstring, YAC_TIME_UNIT_HOUR, &
+      sal_oce_pre_field_id)
 
     CALL yac_fdef_field( &
-      salinity_field_name, comp_id, (/corner_point_id/), 1, &
-      salinity_collection_size, timestepstring, YAC_TIME_UNIT_HOUR, &
-      salinity_field_id)
+      sal_oce_post_field_name, comp_id, (/corner_point_id/), 1, &
+      sal_oce_collection_size, timestepstring, YAC_TIME_UNIT_HOUR, &
+      sal_oce_post_field_id)
 
     CALL yac_fget_interp_stack_config(interp_stack_config_id)
 
@@ -548,8 +549,8 @@ CONTAINS
       interp_stack_config_id, -1)
 
     CALL yac_fdef_couple( &
-      elmer_comp_name, elmer_grid_name, salinity_boundary_field_name, &
-      elmer_comp_name, elmer_grid_name, salinity_field_name, &
+      elmer_comp_name, elmer_grid_name, sal_oce_pre_field_name, &
+      elmer_comp_name, elmer_grid_name, sal_oce_post_field_name, &
       timestepstring, YAC_TIME_UNIT_HOUR, YAC_REDUCTION_TIME_NONE, &
       interp_stack_config_id, &
       src_mask_names=(/yac_string(boundary_corner_mask_name)/))
@@ -573,7 +574,7 @@ CONTAINS
     IF (.NOT. is_root_rank) RETURN
 
     CALL print_field_info(elmer_comp_name, elmer_grid_name, t_oce_field_name)
-    CALL print_field_info(elmer_comp_name, elmer_grid_name, sal_oce_coast_field_name)
+    CALL print_field_info(elmer_comp_name, elmer_grid_name, sal_oce_field_name)
 
   CONTAINS
 
@@ -672,17 +673,17 @@ CONTAINS
 
     ! checks whether the ocean salinity field is defined as a target
     ! in a couple
-    IF (yac_fget_role_from_field_id(sal_oce_coast_field_id) == &
+    IF (yac_fget_role_from_field_id(sal_oce_field_id) == &
         YAC_EXCHANGE_TYPE_TARGET) THEN
 
       IF (is_root_rank) THEN
 
         ! get the action executed by YAC in the next get operation called for
         ! the precipitation flux field and print out some information
-        CALL yac_fget_action(sal_oce_coast_field_id, info)
-        PRINT *, "call get for field: ", TRIM(sal_oce_coast_field_name), &
-                 " datatime: ", TRIM(yac_fget_field_datetime(sal_oce_coast_field_id)), &
-                 " action: ", TRIM(yac_action_to_string(info))
+        CALL yac_fget_action(sal_oce_field_id, info)
+        PRINT *, "call get for field: ", TRIM(sal_oce_field_name), &
+                 " datatime: ", TRIM(yac_fget_field_datetime(sal_oce_field_id)), &
+" action: ", TRIM(yac_action_to_string(info))
       END IF
 
       ! execute get operation for ocean salinity field
@@ -691,10 +692,10 @@ CONTAINS
       ! * if this is not a coupling timestep, ocean salinity field buffer
       !   is left untouched and routine will return immediately
       CALL yac_fget( &
-        sal_oce_coast_field_id, &
-        SIZE(salinity_coast_field, 1), SIZE(salinity_coast_field, 2), &
-        salinity_coast_field, &
-        info, err)
+        sal_oce_field_id, &
+        SIZE(sal_oce_pre_field, 1), SIZE(sal_oce_pre_field, 2), &
+        sal_oce_pre_field, &
+info, err)
 
       ! if this was a coupling timestep
       IF ((info == YAC_ACTION_COUPLING) .OR. &
@@ -707,10 +708,10 @@ CONTAINS
       END IF
 
       CALL yac_fexchange( &
-        salinity_boundary_field_id, salinity_field_id, &
-        SIZE(salinity_coast_field, 1), SIZE(salinity_field, 1), &
-        SIZE(salinity_coast_field, 2), &
-        salinity_coast_field, salinity_field, &
+        sal_oce_pre_field_id, sal_oce_post_field_id, &
+        SIZE(sal_oce_pre_field, 1), SIZE(sal_oce_post_field, 1), &
+        SIZE(sal_oce_pre_field, 2), &
+        sal_oce_pre_field, sal_oce_post_field, &
         info, info, err)
 
       ! TODO: ignore info?
@@ -722,7 +723,7 @@ CONTAINS
   SUBROUTINE destruct_elmer_icon_coupling()
 
     ! clean up
-    DEALLOCATE(t_oce_field, salinity_coast_field, salinity_field)
+    DEALLOCATE(t_oce_field, sal_oce_pre_field, sal_oce_post_field)
 
   END SUBROUTINE destruct_elmer_icon_coupling
 
