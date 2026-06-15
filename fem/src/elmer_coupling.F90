@@ -459,7 +459,7 @@ MODULE elmer_icon_coupling
   DOUBLE PRECISION, PUBLIC, ALLOCATABLE :: t_oce_field(:,:)
 
   ! Salinity field received from ICON; only mapped onto boundary region via mask
-  INTEGER :: sal_oce_coast_field_id = -1
+  INTEGER :: sal_oce_field_id = -1
   CHARACTER(LEN=*), PARAMETER :: sal_oce_field_name = "sal_oce"
 
   ! Fields for internal mapping from boundary region to internal domain
@@ -515,7 +515,7 @@ CONTAINS
       sal_oce_collection_size, timestepstring, YAC_TIME_UNIT_HOUR, &
       sal_oce_field_id)
 
-    ALLOCATE(salinity_coast_field(nbr_vertices, salinity_collection_size))
+    ALLOCATE(sal_oce_pre_field(nbr_vertices, sal_oce_collection_size))
 
     ! TODO move into own function construct_elmer_coupling_preproc?
 
@@ -554,10 +554,10 @@ CONTAINS
       timestepstring, YAC_TIME_UNIT_HOUR, YAC_REDUCTION_TIME_NONE, &
       interp_stack_config_id, &
       src_mask_names=(/yac_string(boundary_corner_mask_name)/))
-      
+
     CALL yac_ffree_interp_stack_config(interp_stack_config_id)
 
-    ALLOCATE(salinity_field(nbr_vertices, salinity_collection_size))
+    ALLOCATE(sal_oce_post_field(nbr_vertices, sal_oce_collection_size))
 
   END SUBROUTINE construct_elmer_icon_coupling
 
@@ -683,7 +683,7 @@ CONTAINS
         CALL yac_fget_action(sal_oce_field_id, info)
         PRINT *, "call get for field: ", TRIM(sal_oce_field_name), &
                  " datatime: ", TRIM(yac_fget_field_datetime(sal_oce_field_id)), &
-" action: ", TRIM(yac_action_to_string(info))
+                 " action: ", TRIM(yac_action_to_string(info))
       END IF
 
       ! execute get operation for ocean salinity field
@@ -695,7 +695,7 @@ CONTAINS
         sal_oce_field_id, &
         SIZE(sal_oce_pre_field, 1), SIZE(sal_oce_pre_field, 2), &
         sal_oce_pre_field, &
-info, err)
+        info, err)
 
       ! if this was a coupling timestep
       IF ((info == YAC_ACTION_COUPLING) .OR. &
