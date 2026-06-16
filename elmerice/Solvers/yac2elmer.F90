@@ -400,6 +400,25 @@ SUBROUTINE YAC2Elmer( Model,Solver,dt,TransientSimulation )
         CALL FATAL(SolverName,'Elmer variables not associated')
       END IF
 
+      ! Validate element variable permutations. In a parallel run, element
+      ! variables declared via "Exported Variable = -elem" in the SIF get a
+      ! proper parallel Perm (built by SetActiveElementsTable). Without that
+      ! declaration, the variable may end up with an invalid Perm.
+
+      ! ! "smb" is known to require this declaration
+      IF (MINVAL(smbVar % Perm(1:GetNOFActive(Solver))) <= 0) THEN
+        CALL FATAL(SolverName, &
+          'smb variable has zero/invalid Perm entries. ' // &
+          'Add  Exported Variable = -elem "smb"  to the YAC2Elmer solver block in the SIF.')
+      END IF
+
+      ! "runoff" did not cause issues, but adding the same check for safety
+      IF (MINVAL(runoffVar % Perm(1:GetNOFActive(Solver))) <= 0) THEN
+        CALL FATAL(SolverName, &
+          'runoff variable has zero/invalid Perm entries. ' // &
+          'Add  Exported Variable = -elem "runoff"  to the YAC2Elmer solver block in the SIF.')
+      END IF
+
       CALL INFO(SolverName, 'BEFORE WRITING NODAL VALUES', Level=3)
        !write over values for nodes
       DO i=1, Mesh % NumberOfNodes
