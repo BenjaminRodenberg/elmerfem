@@ -444,6 +444,8 @@ MODULE elmer_icon_coupling
 
   USE elmer_coupling_utils, ONLY: yac_action_to_string
 
+  USE, INTRINSIC :: iso_c_binding, ONLY: C_INT, C_DOUBLE
+
   IMPLICIT NONE
 
   PRIVATE
@@ -497,7 +499,8 @@ CONTAINS
 
     INTEGER :: nbr_vertices
 
-    REAL(8) :: nnn_max_search_distance, nnn_scale
+    REAL(kind=C_DOUBLE), PARAMETER :: nnn_max_search_distance = 1e-5_C_DOUBLE
+    REAL(kind=C_DOUBLE), PARAMETER :: nnn_scale = 0.0_C_DOUBLE
 
     nbr_vertices = yac_fget_points_size(corner_point_id)
 
@@ -538,15 +541,16 @@ CONTAINS
     ! match in the src field are considered. Both fields use the same grid, so
     ! the non-boundary points should remain unset and will be filled with the
     ! creep algorithm in a second step.
-    nnn_max_search_distance = 1e-5 ! around 50m
-    nnn_scale = 0.0
 
     ! Map boundary points with NNN
     CALL yac_fadd_interp_stack_config_nnn( &
-      interp_stack_config_id, YAC_NNN_AVG, 1, nnn_max_search_distance, nnn_scale)
+      interp_stack_config_id, YAC_NNN_AVG, 1_c_int, nnn_max_search_distance, nnn_scale)
     ! Set remaining points with creep algorithm
     CALL yac_fadd_interp_stack_config_creep( &
-      interp_stack_config_id, -1)
+      interp_stack_config_id, -1_c_int)
+    ! Use -3.0 as sentinel value for points not covered by creep.
+    CALL yac_fadd_interp_stack_config_fixed( &
+      interp_stack_config_id, -3.0_c_double)
 
     CALL yac_fdef_couple( &
       elmer_comp_name, elmer_grid_name, sal_oce_pre_field_name, &
@@ -691,6 +695,10 @@ CONTAINS
       !   been received
       ! * if this is not a coupling timestep, ocean salinity field buffer
       !   is left untouched and routine will return immediately
+
+      ! initialize with sentinel value
+      sal_oce_pre_field(:,:) = -1.0
+
       CALL yac_fget( &
         sal_oce_field_id, &
         SIZE(sal_oce_pre_field, 1), SIZE(sal_oce_pre_field, 2), &
@@ -706,6 +714,9 @@ CONTAINS
         ! update elmer internal ocean salinity field
 
       END IF
+
+      ! initialize with sentinel value
+      sal_oce_post_field(:,:) = -2.0
 
       CALL yac_fexchange( &
         sal_oce_pre_field_id, sal_oce_post_field_id, &
