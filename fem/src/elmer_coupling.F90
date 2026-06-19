@@ -455,10 +455,25 @@ MODULE elmer_icon_coupling
   PUBLIC :: destruct_elmer_icon_coupling
   PUBLIC :: elmer_icon_interface
 
+  ! Temperature field received from ICON; only mapped onto boundary region via mask
   INTEGER :: t_oce_field_id = -1
   CHARACTER(LEN=*), PARAMETER :: t_oce_field_name = "temp_oce"
+
+  ! Fields for internal mapping from boundary region to internal domain
+  ! Source
+  INTEGER :: t_oce_pre_field_id = -1
+  CHARACTER(LEN=*), PARAMETER :: t_oce_pre_field_name = "temp_oce_pre"
+  ! Target
+  INTEGER :: t_oce_post_field_id = -1
+  CHARACTER(LEN=*), PARAMETER :: t_oce_post_field_name = "temp_oce_post"
+
+  ! All fields with t_oce prefix use the same collection size.
   INTEGER :: t_oce_collection_size = 1
-  DOUBLE PRECISION, PUBLIC, ALLOCATABLE :: t_oce_field(:,:)
+
+  ! Buffer for receiving `temp_oce` from ICON; used as input for creep mapping
+  DOUBLE PRECISION, PUBLIC, ALLOCATABLE :: t_oce_pre_field(:,:)
+  ! Buffer for output of creep mapping on internal domain
+  DOUBLE PRECISION, PUBLIC, ALLOCATABLE :: t_oce_post_field(:,:)
 
   ! Salinity field received from ICON; only mapped onto boundary region via mask
   INTEGER :: sal_oce_field_id = -1
@@ -504,13 +519,25 @@ CONTAINS
 
     nbr_vertices = yac_fget_points_size(corner_point_id)
 
-    ! register ocean temperature field in YAC
+    ! register ocean temperature field in YAC (masked on boundary)
     CALL yac_fdef_field( &
       t_oce_field_name, comp_id, (/corner_point_id/), 1, &
       t_oce_collection_size, timestepstring, YAC_TIME_UNIT_HOUR, t_oce_field_id)
 
-    ! allocate and initialise ocean temperature field buffer
-    ALLOCATE(t_oce_field(nbr_vertices, t_oce_collection_size))
+    ALLOCATE(t_oce_pre_field(nbr_vertices, t_oce_collection_size))
+
+    ! register internal temperature fields (Elmer internal mapping from boundary to
+    ! internal domain)
+
+    CALL yac_fdef_field( &
+      t_oce_pre_field_name, comp_id, (/corner_point_id/), 1, &
+      t_oce_collection_size, timestepstring, YAC_TIME_UNIT_HOUR, &
+      t_oce_pre_field_id)
+
+    CALL yac_fdef_field( &
+      t_oce_post_field_name, comp_id, (/corner_point_id/), 1, &
+      t_oce_collection_size, timestepstring, YAC_TIME_UNIT_HOUR, &
+      t_oce_post_field_id)
 
     ! register ocean salinity field in YAC (masked on boundary)
     CALL yac_fdef_field( &
@@ -553,6 +580,13 @@ CONTAINS
       interp_stack_config_id, -3.0_c_double)
 
     CALL yac_fdef_couple( &
+      elmer_comp_name, elmer_grid_name, t_oce_pre_field_name, &
+      elmer_comp_name, elmer_grid_name, t_oce_post_field_name, &
+      timestepstring, YAC_TIME_UNIT_HOUR, YAC_REDUCTION_TIME_NONE, &
+      interp_stack_config_id, &
+      src_mask_names=(/yac_string(boundary_corner_mask_name)/))
+
+    CALL yac_fdef_couple( &
       elmer_comp_name, elmer_grid_name, sal_oce_pre_field_name, &
       elmer_comp_name, elmer_grid_name, sal_oce_post_field_name, &
       timestepstring, YAC_TIME_UNIT_HOUR, YAC_REDUCTION_TIME_NONE, &
@@ -561,6 +595,7 @@ CONTAINS
 
     CALL yac_ffree_interp_stack_config(interp_stack_config_id)
 
+    ALLOCATE(t_oce_post_field(nbr_vertices, t_oce_collection_size))
     ALLOCATE(sal_oce_post_field(nbr_vertices, sal_oce_collection_size))
 
   END SUBROUTINE construct_elmer_icon_coupling
@@ -660,8 +695,12 @@ CONTAINS
       !   been received
       ! * if this is not a coupling timestep, ocean temperature field buffer
       !   is left untouched and routine will return immediately
+
+      ! initialize with sentinel value
+      t_oce_pre_field(:,:) = -1.0
+
       CALL yac_fget( &
-        t_oce_field_id, SIZE(t_oce_field, 1), SIZE(t_oce_field, 2), t_oce_field, &
+        t_oce_field_id, SIZE(t_oce_pre_field, 1), SIZE(t_oce_pre_field, 2), t_oce_pre_field, &
         info, err)
 
       ! if this was a coupling timestep
@@ -673,6 +712,19 @@ CONTAINS
         ! update elmer internal ocean temperature field
 
       END IF
+
+      ! initialize with sentinel value
+      t_oce_post_field(:,:) = -2.0
+
+      CALL yac_fexchange( &
+        t_oce_pre_field_id, t_oce_post_field_id, &
+        SIZE(t_oce_pre_field, 1), SIZE(t_oce_post_field, 1), &
+        SIZE(t_oce_pre_field, 2), &
+        t_oce_pre_field, t_oce_post_field, &
+        info, info, err)
+
+      ! TODO: ignore info?
+
     END IF
 
     ! checks whether the ocean salinity field is defined as a target
@@ -734,7 +786,7 @@ CONTAINS
   SUBROUTINE destruct_elmer_icon_coupling()
 
     ! clean up
-    DEALLOCATE(t_oce_field, sal_oce_pre_field, sal_oce_post_field)
+    DEALLOCATE(t_oce_pre_field, t_oce_post_field, sal_oce_pre_field, sal_oce_post_field)
 
   END SUBROUTINE destruct_elmer_icon_coupling
 
