@@ -1,0 +1,278 @@
+!/*****************************************************************************/
+! *
+! *  Elmer/Ice, a glaciological add-on to Elmer
+! *  http://elmerice.elmerfem.org
+! *
+! *  This program is free software; you can redistribute it and/or
+! *  modify it under the terms of the GNU General Public License
+! *  as published by the Free Software Foundation; either version 2
+! *  of the License, or (at your option) any later version.
+! *
+! *  This program is distributed in the hope that it will be useful,
+! *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+! *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+! *  GNU General Public License for more details.
+! *
+! *****************************************************************************/
+! ******************************************************************************
+! *
+! *  Linear thermal forcing basal melt parameterisation:
+! *
+! *    m = gammaT * (rhow * cp / rhoi * Lf) * (Tw - Tf)
+! *
+! *  where Tf = -1.85 + cc * z  is the pressure-dependent freezing temperature,
+! *  Tw is the ocean temperature read from variable temp_oce, and gammaT is a
+! *  heat exchange velocity (m/s).  The result is converted to m/yr.
+! *
+! *  Required Constants (in sif):
+! *    Ice Density            (kg/m3)
+! *    Ocean Water Density    (kg/m3)
+! *    Latent Heat SI         (J/kg)
+! *    SW Cp                  (J/kg/K)
+! *
+! *  Required Solver keywords (in sif):
+! *    lower surface variable name  = string "Zb"
+! *    grounded mask name           = string "GroundedMask"
+! *    grounding line melt          = logical False
+! *    gamma T                      = real 1.0e-4
+! *
+! *  Optional Solver keywords:
+! *    water column scaling         = logical True
+! *    water column scaling factor  = real 75.0
+! *    bedrock variable name        = string "bedrock"   ! required if water column scaling = True
+! *
+! *  Required Elmer variables:
+! *    temp_oce   : nodal ocean temperature (degC)
+! *
+! *  Output variables (created automatically):
+! *    <var>_flux : integrated melt flux per element (m3/yr), element variable
+! *
+! *  Example sif solver section:
+! *
+! *  Solver 1
+! *    Exec Solver = "before timestep"
+! *    Equation = "Shelf melt"
+! *    Procedure = "ElmerIceSolvers" "SubShelfMeltLinearTF"
+! *    Variable = bmb
+! *    Variable DOFs = 1
+! *    lower surface variable name = string "Zb"
+! *    grounded mask name          = string "GroundedMask"
+! *    grounding line melt         = logical False
+! *    gamma T                     = real 1.0e-4
+! *    water column scaling        = logical True
+! *    water column scaling factor = real 75.0
+! *    bedrock variable name       = string "bedrock"
+! *    temp init                   = Real -1.5
+! *  End
+! *
+! *****************************************************************************/
+
+SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
+
+  USE DefUtils
+
+  IMPLICIT NONE
+
+  TYPE(Solver_t), TARGET :: Solver
+  TYPE(Model_t)          :: Model
+  REAL(KIND=dp)          :: dt
+  LOGICAL                :: Transient
+
+  ! Elmer variables
+  TYPE(Variable_t), POINTER :: z_iceBase, z_bedrock, groundedMask, T_oce_var
+  INTEGER, POINTER          :: T_oce_Perm(:)
+  REAL(KIND=dp), POINTER    :: T_oce_vals(:)
+
+  ! Solver parameters
+  CHARACTER(LEN=MAX_NAME_LEN) :: lowerSurfName, groundedMaskName, bedrockName
+  REAL(KIND=dp) :: gammaT
+  LOGICAL       :: glMelt, wct_sc
+
+  ! Physical constants
+  REAL(KIND=dp) :: rhoi, rhoo, Lf, SWCp
+  REAL(KIND=dp), PARAMETER :: cc            = 7.61e-4_dp
+  REAL(KIND=dp), PARAMETER :: secondstoyear = 60.0_dp * 60.0_dp * 24.0_dp * 365.25_dp
+  REAL(KIND=dp), PARAMETER :: T_freeze_ref  = -1.85_dp
+
+  ! Local variables
+  TYPE(ValueList_t), POINTER :: SolverParams
+  REAL(KIND=dp) :: T_freeze, T_far, meltRate, meltScaling, wct, wct_factor, T_oce_default
+  LOGICAL       :: found, T_oce_found
+  INTEGER       :: ii
+
+  ! For element-based integrated melt flux
+  TYPE(Variable_t), POINTER         :: meltFlux_var
+  REAL(KIND=dp), POINTER            :: FluxValues(:)
+  INTEGER, POINTER                  :: FluxPerm(:)
+  TYPE(Element_t), POINTER          :: Element
+  TYPE(Nodes_t)                     :: ElementNodes
+  TYPE(GaussIntegrationPoints_t)    :: IntegStuff
+  REAL(KIND=dp) :: Basis(MAX_ELEMENT_NODES), dBasisdx(MAX_ELEMENT_NODES, 3)
+  REAL(KIND=dp) :: detJ, U, V, W, Sw, meltRate_gp, elemFlux
+  INTEGER       :: t, n_el, jj, kk
+  LOGICAL       :: stat
+
+  CHARACTER(LEN=MAX_NAME_LEN), PARAMETER :: SolverName = 'SubShelfMeltLinearTF'
+
+  !----------------------------------------------------------------------------
+  ! Read solver parameters
+  !----------------------------------------------------------------------------
+  SolverParams => GetSolverParams()
+
+  gammaT = GetConstReal( SolverParams, 'gamma T', Found )
+  IF (.NOT. Found) CALL FATAL(SolverName, 'No keyword >gamma T< found')
+
+  lowerSurfName = GetString( SolverParams, 'lower surface variable name', Found )
+  IF (.NOT. Found) CALL FATAL(SolverName, 'No keyword >lower surface variable name< found')
+
+  groundedMaskName = GetString( SolverParams, 'grounded mask name', Found )
+  IF (.NOT. Found) CALL FATAL(SolverName, 'No keyword >grounded mask name< found')
+
+  glMelt = GetLogical( SolverParams, 'grounding line melt', Found )
+  IF (.NOT. Found) CALL FATAL(SolverName, 'No keyword >grounding line melt< found')
+
+  wct_sc = GetLogical( SolverParams, 'water column scaling', Found )
+  IF (wct_sc) THEN
+     wct_factor = GetConstReal( SolverParams, 'water column scaling factor', Found )
+     IF (.NOT. Found) CALL FATAL(SolverName, 'No keyword >water column scaling factor< found')
+     bedrockName = GetString( SolverParams, 'bedrock variable name', Found )
+     IF (.NOT. Found) CALL FATAL(SolverName, 'No keyword >bedrock variable name< found')
+  END IF
+
+  !----------------------------------------------------------------------------
+  ! Read physical constants
+  !----------------------------------------------------------------------------
+  rhoi = GetConstReal( CurrentModel % Constants, 'Ice Density', Found )
+  IF (.NOT. Found) CALL FATAL(SolverName, 'Ice Density not found in Constants')
+  rhoo = GetConstReal( CurrentModel % Constants, 'Water Density', Found )
+  IF (.NOT. Found) CALL FATAL(SolverName, 'Water Density not found in Constants')
+  Lf   = GetConstReal( CurrentModel % Constants, 'Latent Heat SI', Found )
+  IF (.NOT. Found) CALL FATAL(SolverName, 'Latent Heat SI not found in Constants')
+  SWCp = GetConstReal( CurrentModel % Constants, 'SW Cp', Found )
+  IF (.NOT. Found) CALL FATAL(SolverName, 'SW Cp not found in Constants')
+
+  !----------------------------------------------------------------------------
+  ! Get Elmer variables
+  !----------------------------------------------------------------------------
+  z_iceBase => VariableGet( Solver % Mesh % Variables, TRIM(lowerSurfName) )
+  IF (.NOT. ASSOCIATED(z_iceBase)) CALL FATAL(SolverName, 'Failed to find ice base variable')
+
+  groundedMask => VariableGet( Solver % Mesh % Variables, TRIM(groundedMaskName) )
+  IF (.NOT. ASSOCIATED(groundedMask)) CALL FATAL(SolverName, 'Failed to find grounded mask variable')
+
+  T_oce_var   => VariableGet( Solver % Mesh % Variables, 'temp_oce' )
+  T_oce_found = ASSOCIATED(T_oce_var)
+  IF (T_oce_found) THEN
+     T_oce_vals => T_oce_var % Values
+     T_oce_Perm => T_oce_var % Perm
+     CALL INFO(SolverName, 'Variable temp_oce found; using nodal ocean temperatures', Level=3)
+  ELSE
+     CALL WARN(SolverName, 'Variable temp_oce not found; attempting to use >temp init<')
+     T_oce_default = GetConstReal( SolverParams, 'temp init', Found )
+     IF (.NOT. Found) CALL FATAL(SolverName, 'Variable temp_oce not found and no >temp init< set')
+     CALL INFO(SolverName, 'Using uniform initial ocean temperature from >temp init<', Level=3)
+  END IF
+
+  IF (wct_sc) THEN
+     z_bedrock => VariableGet( Solver % Mesh % Variables, TRIM(bedrockName) )
+     IF (.NOT. ASSOCIATED(z_bedrock)) CALL FATAL(SolverName, 'Failed to find bedrock variable')
+  END IF
+
+  !----------------------------------------------------------------------------
+  ! Automatically create element-based flux variable if absent
+  !----------------------------------------------------------------------------
+  meltFlux_var => VariableGet( Solver % Mesh % Variables, &
+       TRIM(Solver % Variable % Name) // '_flux' )
+  IF (.NOT. ASSOCIATED(meltFlux_var)) THEN
+     ALLOCATE( FluxValues(Solver % NumberOfActiveElements) )
+     ALLOCATE( FluxPerm(Solver % Mesh % NumberOfBulkElements + &
+                        Solver % Mesh % NumberOfBoundaryElements) )
+     FluxValues = 0.0_dp
+     FluxPerm   = 0
+     DO t = 1, Solver % NumberOfActiveElements
+        Element => GetActiveElement(t)
+        FluxPerm(Element % ElementIndex) = t
+     END DO
+     CALL VariableAdd( Solver % Mesh % Variables, Solver % Mesh, Solver, &
+          TRIM(Solver % Variable % Name) // '_flux', 1, FluxValues, FluxPerm )
+     meltFlux_var => VariableGet( Solver % Mesh % Variables, &
+          TRIM(Solver % Variable % Name) // '_flux' )
+  END IF
+
+  !----------------------------------------------------------------------------
+  ! Initialise melt and flux to zero
+  !----------------------------------------------------------------------------
+  Solver % Variable % Values = 0.0_dp
+  meltFlux_var % Values      = 0.0_dp
+
+  !----------------------------------------------------------------------------
+  ! Loop over nodes to compute nodal melt rate
+  !----------------------------------------------------------------------------
+  DO ii = 1, Model % NumberOfNodes
+
+     IF (Solver % Variable % Perm(ii) .LE. 0) CYCLE
+
+     IF (groundedMask % Values(groundedMask % Perm(ii)) .GT. 0) CYCLE
+     IF (groundedMask % Values(groundedMask % Perm(ii)) .EQ. 0) THEN
+        IF (.NOT. glMelt) CYCLE
+     END IF
+
+     T_freeze = T_freeze_ref + cc * z_iceBase % Values(z_iceBase % Perm(ii))
+
+     IF (T_oce_found) THEN
+        T_far = T_oce_vals(T_oce_Perm(ii))
+     ELSE
+        T_far = T_oce_default
+     END IF
+
+     meltRate = gammaT * (rhoo * SWCp / (rhoi * Lf)) * (T_far - T_freeze) * secondstoyear
+
+     IF (wct_sc) THEN
+        wct         = z_iceBase % Values(z_iceBase % Perm(ii)) &
+                    - z_bedrock % Values(z_bedrock % Perm(ii))
+        meltScaling = TANH(wct / (wct_factor / EXP(1.0_dp)))
+     ELSE
+        meltScaling = 1.0_dp
+     END IF
+
+     Solver % Variable % Values(Solver % Variable % Perm(ii)) = meltRate * meltScaling
+
+  END DO
+
+  !----------------------------------------------------------------------------
+  ! Loop over active elements to integrate nodal melt rate -> element flux
+  !----------------------------------------------------------------------------
+  DO t = 1, Solver % NumberOfActiveElements
+     Element => GetActiveElement(t)
+     n_el = GetElementNOFNodes(Element)
+     CALL GetElementNodes(ElementNodes)
+     IntegStuff = GaussPoints(Element)
+
+     elemFlux = 0.0_dp
+     DO jj = 1, IntegStuff % n
+        U  = IntegStuff % u(jj)
+        V  = IntegStuff % v(jj)
+        W  = IntegStuff % w(jj)
+        Sw = IntegStuff % s(jj)
+        stat = ElementInfo(Element, ElementNodes, U, V, W, detJ, Basis, dBasisdx)
+
+        ! Interpolate nodal melt rate to this Gauss point
+        meltRate_gp = 0.0_dp
+        DO kk = 1, n_el
+           ii = Element % NodeIndexes(kk)
+           IF (Solver % Variable % Perm(ii) > 0) THEN
+              meltRate_gp = meltRate_gp + Basis(kk) * &
+                   Solver % Variable % Values(Solver % Variable % Perm(ii))
+           END IF
+        END DO
+
+        elemFlux = elemFlux + Sw * detJ * meltRate_gp
+     END DO
+
+     IF (meltFlux_var % Perm(Element % ElementIndex) > 0) THEN
+        meltFlux_var % Values(meltFlux_var % Perm(Element % ElementIndex)) = elemFlux
+     END IF
+
+  END DO
+
+END SUBROUTINE SubShelfMeltLinearTF
