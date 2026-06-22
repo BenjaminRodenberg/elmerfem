@@ -888,8 +888,8 @@ CONTAINS
     CALL yac_finit_comm (yac_comm)
 
     ! define calendar
-    ! * currently hard-coded to 365 day calendar; can be made configurable if needed
-    CALL yac_fdef_calendar(YAC_YEAR_OF_365_DAYS)
+    ! * currently commented out because problematic with ICON/EBFM
+    ! CALL yac_fdef_calendar(YAC_YEAR_OF_365_DAYS)
 
     ! read configuration file
     ! * contains calendar, start- and end-date
