@@ -20,13 +20,21 @@
 ! *
 ! *    m = gammaT * (rhow * cp / rhoi * Lf) * (Tw - Tf)
 ! *
-! *  where Tf = -1.85 + cc * z  is the pressure-dependent freezing temperature,
-! *  Tw is the ocean temperature read from variable temp_oce, and gammaT is a
-! *  heat exchange velocity (m/s).  The result is converted to m/yr.
+! *  where Tf = lambda1 * S + lambda2 + cc * z  is the salinity- and
+! *  pressure-dependent freezing temperature (ISOMIP+ linearisation),
+! *  Tw is the ocean temperature read from variable temp_oce,
+! *  S  is the ocean salinity read from variable sal_oce, and
+! *  gammaT is a heat exchange velocity (m/s).
+! *  The result is converted to m/yr.
+! *
+! *  Freezing point coefficients:
+! *    lambda1 = -0.0573  (degC/PSU)
+! *    lambda2 =  0.0832  (degC)
+! *    cc      =  7.61e-4 (degC/m)
 ! *
 ! *  Required Constants (in sif):
 ! *    Ice Density            (kg/m3)
-! *    Ocean Water Density    (kg/m3)
+! *    Water Density          (kg/m3)
 ! *    Latent Heat SI         (J/kg)
 ! *    SW Cp                  (J/kg/K)
 ! *
@@ -40,9 +48,12 @@
 ! *    water column scaling         = logical True
 ! *    water column scaling factor  = real 75.0
 ! *    bedrock variable name        = string "bedrock"   ! required if water column scaling = True
+! *    temp init                    = real -1.5          ! used if temp_oce variable is absent
+! *    sal init                     = real 34.0          ! used if sal_oce variable is absent
 ! *
-! *  Required Elmer variables:
-! *    temp_oce   : nodal ocean temperature (degC)
+! *  Required Elmer variables (or fallback keywords above):
+! *    temp_oce : nodal ocean temperature (degC)
+! *    sal_oce  : nodal ocean salinity (PSU)
 ! *
 ! *  Output variables (created automatically):
 ! *    <var>_flux : integrated melt flux per element (m3/yr), element variable
@@ -62,7 +73,8 @@
 ! *    water column scaling        = logical True
 ! *    water column scaling factor = real 75.0
 ! *    bedrock variable name       = string "bedrock"
-! *    temp init                   = Real -1.5
+! *    temp init                   = Real -1.5    ! fallback if temp_oce absent
+! *    sal init                    = Real 34.0    ! fallback if sal_oce absent
 ! *  End
 ! *
 ! *****************************************************************************/
@@ -80,8 +92,8 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
 
   ! Elmer variables
   TYPE(Variable_t), POINTER :: z_iceBase, z_bedrock, groundedMask, T_oce_var
-  INTEGER, POINTER          :: T_oce_Perm(:)
-  REAL(KIND=dp), POINTER    :: T_oce_vals(:)
+  INTEGER, POINTER          :: T_oce_Perm(:), sal_oce_Perm(:)
+  REAL(KIND=dp), POINTER    :: T_oce_vals(:), sal_oce_vals(:)
 
   ! Solver parameters
   CHARACTER(LEN=MAX_NAME_LEN) :: lowerSurfName, groundedMaskName, bedrockName
@@ -92,12 +104,13 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
   REAL(KIND=dp) :: rhoi, rhoo, Lf, SWCp
   REAL(KIND=dp), PARAMETER :: cc            = 7.61e-4_dp
   REAL(KIND=dp), PARAMETER :: secondstoyear = 60.0_dp * 60.0_dp * 24.0_dp * 365.25_dp
-  REAL(KIND=dp), PARAMETER :: T_freeze_ref  = -1.85_dp
+  REAL(KIND=dp), PARAMETER :: lambda1       = -0.0573_dp   ! freezing point salinity coeff (degC/PSU)
+  REAL(KIND=dp), PARAMETER :: lambda2       =  0.0832_dp   ! freezing point offset (degC)
 
   ! Local variables
   TYPE(ValueList_t), POINTER :: SolverParams
-  REAL(KIND=dp) :: T_freeze, T_far, meltRate, meltScaling, wct, wct_factor, T_oce_default
-  LOGICAL       :: found, T_oce_found
+  REAL(KIND=dp) :: T_freeze, T_far, S_far, meltRate, meltScaling, wct, wct_factor, T_oce_default, sal_oce_default
+  LOGICAL       :: found, T_oce_found, sal_oce_found
   INTEGER       :: ii
 
   ! For element-based integrated melt flux
@@ -173,6 +186,19 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
      CALL INFO(SolverName, 'Using uniform initial ocean temperature from >temp init<', Level=3)
   END IF
 
+  sal_oce_var   => VariableGet( Solver % Mesh % Variables, 'sal_oce' )
+  sal_oce_found = ASSOCIATED(sal_oce_var)
+  IF (sal_oce_found) THEN
+     sal_oce_vals => sal_oce_var % Values
+     sal_oce_Perm => sal_oce_var % Perm
+     CALL INFO(SolverName, 'Variable sal_oce found; using nodal ocean salinity', Level=3)
+  ELSE
+     CALL WARN(SolverName, 'Variable sal_oce not found; attempting to use >sal init<')
+     sal_oce_default = GetConstReal( SolverParams, 'sal init', Found )
+     IF (.NOT. Found) CALL FATAL(SolverName, 'Variable sal_oce not found and no >sal init< set')
+     CALL INFO(SolverName, 'Using uniform initial ocean salinity from >sal init<', Level=3)
+  END IF
+
   IF (wct_sc) THEN
      z_bedrock => VariableGet( Solver % Mesh % Variables, TRIM(bedrockName) )
      IF (.NOT. ASSOCIATED(z_bedrock)) CALL FATAL(SolverName, 'Failed to find bedrock variable')
@@ -217,7 +243,13 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
         IF (.NOT. glMelt) CYCLE
      END IF
 
-     T_freeze = T_freeze_ref + cc * z_iceBase % Values(z_iceBase % Perm(ii))
+     IF (sal_oce_found) THEN
+        S_far = sal_oce_vals(sal_oce_Perm(ii))
+     ELSE
+        S_far = sal_oce_default
+     END IF
+
+     T_freeze = lambda1 * S_far + lambda2 + cc * z_iceBase % Values(z_iceBase % Perm(ii))
 
      IF (T_oce_found) THEN
         T_far = T_oce_vals(T_oce_Perm(ii))
