@@ -91,7 +91,7 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
   LOGICAL                :: Transient
 
   ! Elmer variables
-  TYPE(Variable_t), POINTER :: z_iceBase, z_bedrock, groundedMask, T_oce_var
+  TYPE(Variable_t), POINTER :: z_iceBase, z_bedrock, groundedMask, T_oce_var, sal_oce_var
   INTEGER, POINTER          :: T_oce_Perm(:), sal_oce_Perm(:)
   REAL(KIND=dp), POINTER    :: T_oce_vals(:), sal_oce_vals(:)
 
@@ -173,7 +173,7 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
   groundedMask => VariableGet( Solver % Mesh % Variables, TRIM(groundedMaskName) )
   IF (.NOT. ASSOCIATED(groundedMask)) CALL FATAL(SolverName, 'Failed to find grounded mask variable')
 
-  T_oce_var   => VariableGet( Solver % Mesh % Variables, 'temp_oce' )
+  T_oce_var   => VariableGet( Solver % Mesh % Variables, 'temp_oce_post' )
   T_oce_found = ASSOCIATED(T_oce_var)
   IF (T_oce_found) THEN
      T_oce_vals => T_oce_var % Values
@@ -186,7 +186,7 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
      CALL INFO(SolverName, 'Using uniform initial ocean temperature from >temp init<', Level=3)
   END IF
 
-  sal_oce_var   => VariableGet( Solver % Mesh % Variables, 'sal_oce' )
+  sal_oce_var   => VariableGet( Solver % Mesh % Variables, 'sal_oce_post' )
   sal_oce_found = ASSOCIATED(sal_oce_var)
   IF (sal_oce_found) THEN
      sal_oce_vals => sal_oce_var % Values
