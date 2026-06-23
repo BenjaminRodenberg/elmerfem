@@ -1,22 +1,40 @@
 Test for SubShelfMeltLinearTF solver
-=====================================
+====================================
 
-Verifies the linear thermal forcing basal melt parameterisation:
+This test now checks branch-sensitive behaviour, not only the base melt formula.
 
-  m = gammaT * (rhow * cp / (rhoi * Lf)) * (Tw - Tf)  [m/yr]
+Base formula:
 
-where Tf = lambda1*S + lambda2 + cc*z is the freezing point temperature.
+  m0 = gammaT * (rhow * cp / (rhoi * Lf)) * (Tw - Tf)  [m/yr]
 
-Setup:
+where:
+
+  Tf = lambda1*S + lambda2 + cc*z
+
+Common setup:
 - 2D mesh (1000 m x 500 m)
-- All nodes floating (GroundedMask = -1)
 - Uniform ocean temperature: temp_oce_post = -1.0 degC
 - Uniform ocean salinity: sal_oce_post = 34.0 PSU
 - Ice base elevation: Zb = -500 m
-- No water column scaling
-- Grounding line melt = False
 
-Expected result:
-  Tf  = -0.0573*34 + 0.0832 + 7.61e-4*(-500) = -2.2455 degC
-  TF  = Tw - Tf = -1.0 - (-2.2455) = 1.2455 degC
-  m   = 1e-4 * (1028*3974 / (917*335500)) * 1.2455 * 31557600 ≈ 52.19 m/yr
+Scenario 1 (floating + water column scaling):
+- GroundedMask = -1
+- water column scaling = True
+- bedrock = -510 m, scaling factor = 75 m
+- Expected:
+  Tf      = -2.2455 degC
+  Tw - Tf = 1.2455 degC
+  m0      = 52.19234573 m/yr
+  wct     = Zb - bedrock = 10 m
+  scaling = tanh(10 / (75/e)) = 0.3473593091
+  m       = 18.12949715 m/yr
+
+Scenario 2 (grounding-line masking):
+- GroundedMask = 0 everywhere
+- grounding line melt = False
+- Expected melt = 0 everywhere
+
+Scenario 3 (grounded masking):
+- GroundedMask = 1 everywhere
+- grounding line melt = True
+- Expected melt = 0 everywhere
