@@ -231,19 +231,9 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
         IF (.NOT. glMelt) CYCLE
      END IF
 
-     IF (sal_oce_found) THEN
-        S_far = sal_oce_vals(sal_oce_Perm(ii))
-     ELSE
-        S_far = sal_oce_default
-     END IF
-
+     S_far = sal_oce_vals(sal_oce_Perm(ii))
      T_freeze = lambda1 * S_far + lambda2 + cc * z_iceBase % Values(z_iceBase % Perm(ii))
-
-     IF (T_oce_found) THEN
-        T_far = T_oce_vals(T_oce_Perm(ii))
-     ELSE
-        T_far = T_oce_default
-     END IF
+     T_far = T_oce_vals(T_oce_Perm(ii))
 
      meltRate = gammaT * (rhoo * SWCp / (rhoi * Lf)) * (T_far - T_freeze) * secondstoyear
 
