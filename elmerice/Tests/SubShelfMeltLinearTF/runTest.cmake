@@ -1,4 +1,4 @@
-INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/../test_macros.cmake)
+INCLUDE(${CMAKE_CURRENT_LIST_DIR}/../test_macros.cmake)
 
 EXECUTE_PROCESS(COMMAND ${ELMERGRID_BIN} 1 2 mesh.grd)
 
