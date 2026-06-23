@@ -38,3 +38,14 @@ Scenario 3 (grounded masking):
 - GroundedMask = 1 everywhere
 - grounding line melt = True
 - Expected melt = 0 everywhere
+
+Limitations (important)
+-----------------------
+
+This test improves sensitivity, but it is still not exhaustive.
+
+- It validates solver norms only. It does not compare full nodal fields, so some spatially local mistakes can remain undetected if they do not change the norm enough.
+- It does not exercise the branch `IF (Solver % Variable % Perm(ii) .LE. 0) CYCLE` because this test runs in a simple serial configuration where node permutations are active.
+- It does not directly validate the element flux output `<variable>_flux`; the element integration block is not checked by this test.
+- The `water column scaling = False` path is currently only used in fully masked scenarios (expected zero melt). This means a bug in the non-masked `meltScaling = 1.0` assignment can still escape detection in this specific test.
+- The setup uses uniform ocean forcing and mask values per scenario; mixed masks and spatially varying forcing are not covered.
