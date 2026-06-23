@@ -48,12 +48,10 @@
 ! *    water column scaling         = logical True
 ! *    water column scaling factor  = real 75.0
 ! *    bedrock variable name        = string "bedrock"   ! required if water column scaling = True
-! *    temp init                    = real -1.5          ! used if temp_oce variable is absent
-! *    sal init                     = real 34.0          ! used if sal_oce variable is absent
 ! *
-! *  Required Elmer variables (or fallback keywords above):
-! *    temp_oce : nodal ocean temperature (degC)
-! *    sal_oce  : nodal ocean salinity (PSU)
+! *  Required Elmer variables:
+! *    temp_oce_post : nodal ocean temperature (degC)
+! *    sal_oce_post  : nodal ocean salinity (PSU)
 ! *
 ! *  Output variables (created automatically):
 ! *    <var>_flux : integrated melt flux per element (m3/yr), element variable
@@ -73,8 +71,6 @@
 ! *    water column scaling        = logical True
 ! *    water column scaling factor = real 75.0
 ! *    bedrock variable name       = string "bedrock"
-! *    temp init                   = Real -1.5    ! fallback if temp_oce absent
-! *    sal init                    = Real 34.0    ! fallback if sal_oce absent
 ! *  End
 ! *
 ! *****************************************************************************/
@@ -175,28 +171,20 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
 
   T_oce_var   => VariableGet( Solver % Mesh % Variables, 'temp_oce_post' )
   T_oce_found = ASSOCIATED(T_oce_var)
+  IF (.NOT. ASSOCIATED(T_oce_var)) CALL FATAL(SolverName, 'Variable temp_oce_post not found')
   IF (T_oce_found) THEN
      T_oce_vals => T_oce_var % Values
      T_oce_Perm => T_oce_var % Perm
      CALL INFO(SolverName, 'Variable temp_oce found; using nodal ocean temperatures', Level=3)
-  ELSE
-     CALL WARN(SolverName, 'Variable temp_oce not found; attempting to use >temp init<')
-     T_oce_default = GetConstReal( SolverParams, 'temp init', Found )
-     IF (.NOT. Found) CALL FATAL(SolverName, 'Variable temp_oce not found and no >temp init< set')
-     CALL INFO(SolverName, 'Using uniform initial ocean temperature from >temp init<', Level=3)
   END IF
 
   sal_oce_var   => VariableGet( Solver % Mesh % Variables, 'sal_oce_post' )
   sal_oce_found = ASSOCIATED(sal_oce_var)
+  IF (.NOT. ASSOCIATED(sal_oce_var)) CALL FATAL(SolverName, 'Variable sal_oce_post not found')
   IF (sal_oce_found) THEN
      sal_oce_vals => sal_oce_var % Values
      sal_oce_Perm => sal_oce_var % Perm
      CALL INFO(SolverName, 'Variable sal_oce found; using nodal ocean salinity', Level=3)
-  ELSE
-     CALL WARN(SolverName, 'Variable sal_oce not found; attempting to use >sal init<')
-     sal_oce_default = GetConstReal( SolverParams, 'sal init', Found )
-     IF (.NOT. Found) CALL FATAL(SolverName, 'Variable sal_oce not found and no >sal init< set')
-     CALL INFO(SolverName, 'Using uniform initial ocean salinity from >sal init<', Level=3)
   END IF
 
   IF (wct_sc) THEN
