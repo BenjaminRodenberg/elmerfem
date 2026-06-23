@@ -1,0 +1,104 @@
+! Test for SubShelfMeltLinearTF solver
+! Verifies the linear thermal forcing basal melt parameterisation.
+!
+! All nodes are floating with uniform ocean temperature and salinity.
+! Expected melt rate: ~52.19 m/yr (see README.txt for derivation).
+
+Check Keywords Warn
+
+Header
+  Mesh DB "." "mesh"
+End
+
+Constants
+  Ice Density    = Real 917.0     ! kg/m3
+  Water Density  = Real 1028.0    ! kg/m3
+  Latent Heat SI = Real 335500.0  ! J/kg
+  SW Cp          = Real 3974.0    ! J/(kg K)
+End
+
+!---------------------------------------------------
+!---------------- SIMULATION -----------------------
+!---------------------------------------------------
+
+Simulation
+  Coordinate System = Cartesian 2D
+  Simulation Type = Steady State
+  Steady State Max Iterations = 1
+  Output Intervals = 0
+  max output level = 4
+End
+
+!---------------------------------------------------
+!---------------- BODIES ---------------------------
+!---------------------------------------------------
+
+Body 1
+  Equation = 1
+  Material = 1
+End
+
+!---------------------------------------------------
+!---------------- MATERIAL -------------------------
+!---------------------------------------------------
+
+Material 1
+  Density = Real 917.0
+End
+
+!---------------------------------------------------
+!---------------- SOLVERS --------------------------
+!---------------------------------------------------
+
+! Solver 1: initialise auxiliary variables and declare them so that
+! SubShelfMeltLinearTF can find them via VariableGet.
+Solver 1
+  Exec Solver = Before All
+  Equation = "InitOceanVars"
+  Procedure = "InitOceanVarsSolver" "InitOceanVarsSolver"
+  Variable = -nooutput InitDummy
+  Variable DOFs = 1
+
+  Exported Variable 1 = -dofs 1 "Zb"
+  Exported Variable 2 = -dofs 1 "GroundedMask"
+  Exported Variable 3 = -dofs 1 "temp_oce_post"
+  Exported Variable 4 = -dofs 1 "sal_oce_post"
+
+  Zb Value            = Real -500.0
+  GroundedMask Value  = Real -1.0
+  temp_oce_post Value = Real -1.0
+  sal_oce_post Value  = Real 34.0
+End
+
+Solver 2
+  Exec Solver = Before Timestep
+  Equation = "Shelf melt"
+  Procedure = "ElmerIceSolvers" "SubShelfMeltLinearTF"
+  Variable = bmb
+  Variable DOFs = 1
+
+  lower surface variable name  = String "Zb"
+  grounded mask name           = String "GroundedMask"
+  grounding line melt          = Logical False
+  gamma T                      = Real 1.0e-4
+  water column scaling         = Logical False
+End
+
+!---------------------------------------------------
+!---------------- EQUATIONS ------------------------
+!---------------------------------------------------
+
+Equation 1
+  Active Solvers(2) = 1 2
+End
+
+!---------------------------------------------------
+!---------------- REFERENCE NORM -------------------
+!---------------------------------------------------
+
+! All nodes are floating with uniform conditions, so the melt rate is uniform.
+! Tf  = -0.0573*34 + 0.0832 + 7.61e-4*(-500) = -2.2455 degC
+! TF  = -1.0 - (-2.2455) = 1.2455 degC
+! m   = 1e-4 * (1028*3974 / (917*335500)) * 1.2455 * 31557600 ~52.19 m/yr
+Solver 2 :: Reference Norm = Real 5.21923457E+01
+Solver 2 :: Reference Norm Tolerance = Real 1E-06

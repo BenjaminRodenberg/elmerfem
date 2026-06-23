@@ -289,4 +289,8 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
 
   END DO
 
+   ! Compute and store the solution norm for reference norm checking
+   Solver % Variable % Norm = ComputeNorm(Solver, SIZE(Solver % Variable % Values), &
+        Solver % Variable % Values)
+
 END SUBROUTINE SubShelfMeltLinearTF
