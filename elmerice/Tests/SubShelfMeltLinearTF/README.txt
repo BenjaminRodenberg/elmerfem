@@ -42,7 +42,7 @@ Scenario 3 (grounded masking):
 Limitations (important)
 -----------------------
 
-This test improves sensitivity, but it is still not exhaustive.
+This test is not exhaustive.
 
 - It validates solver norms only. It does not compare full nodal fields, so some spatially local mistakes can remain undetected if they do not change the norm enough.
 - It does not exercise the branch `IF (Solver % Variable % Perm(ii) .LE. 0) CYCLE` because this test runs in a simple serial configuration where node permutations are active.
