@@ -18,19 +18,14 @@
 ! *
 ! *  Linear thermal forcing basal melt parameterisation:
 ! *
-! *    m = gammaT * (rhow * cp / rhoi * Lf) * (Tw - Tf)
+! *    m = gammaT * (rhow * cp / (rhoi * Lf)) * (Tw - Tf)
 ! *
 ! *  where Tf = lambda1 * S + lambda2 + cc * z  is the salinity- and
 ! *  pressure-dependent freezing temperature (ISOMIP+ linearisation),
-! *  Tw is the ocean temperature read from variable temp_oce,
-! *  S  is the ocean salinity read from variable sal_oce, and
+! *  Tw is the ocean temperature read from variable temp_oce_post,
+! *  S  is the ocean salinity read from variable sal_oce_post, and
 ! *  gammaT is a heat exchange velocity (m/s).
 ! *  The result is converted to m/yr.
-! *
-! *  Freezing point coefficients:
-! *    lambda1 = -0.0573  (degC/PSU)
-! *    lambda2 =  0.0832  (degC)
-! *    cc      =  7.61e-4 (degC/m)
 ! *
 ! *  Required Constants (in sif):
 ! *    Ice Density            (kg/m3)
@@ -97,11 +92,11 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
   LOGICAL       :: glMelt, wct_sc
 
   ! Physical constants
-  REAL(KIND=dp) :: rhoi, rhoo, Lf, SWCp
-  REAL(KIND=dp), PARAMETER :: cc            = 7.61e-4_dp
-  REAL(KIND=dp), PARAMETER :: secondstoyear = 60.0_dp * 60.0_dp * 24.0_dp * 365.25_dp
+  REAL(KIND=dp) :: rhoi, rhoo, Lf, SWCp, seconds_per_year
+  ! Freezing point parameters (from ISOMIP+)
   REAL(KIND=dp), PARAMETER :: lambda1       = -0.0573_dp   ! freezing point salinity coeff (degC/PSU)
   REAL(KIND=dp), PARAMETER :: lambda2       =  0.0832_dp   ! freezing point offset (degC)
+  REAL(KIND=dp), PARAMETER :: cc            = 7.61e-4_dp
 
   ! Local variables
   TYPE(ValueList_t), POINTER :: SolverParams
@@ -118,7 +113,7 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
   TYPE(GaussIntegrationPoints_t)    :: IntegStuff
   REAL(KIND=dp) :: Basis(MAX_ELEMENT_NODES), dBasisdx(MAX_ELEMENT_NODES, 3)
   REAL(KIND=dp) :: detJ, U, V, W, Sw, meltRate_gp, elemFlux
-  INTEGER       :: t, n_el, jj, kk
+  INTEGER       :: element_id, n_el, jj, kk
   LOGICAL       :: stat
 
   CHARACTER(LEN=MAX_NAME_LEN), PARAMETER :: SolverName = 'SubShelfMeltLinearTF'
@@ -152,14 +147,20 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
   ! Read physical constants
   !----------------------------------------------------------------------------
   rhoi = GetConstReal( CurrentModel % Constants, 'Ice Density', Found )
-  IF (.NOT. Found) CALL FATAL(SolverName, 'Ice Density not found in Constants')
+  IF (.NOT. Found) CALL FATAL(SolverName, &
+       'Ice Density not found in Constants; should be defined in the Constants section of the sif file')
   rhoo = GetConstReal( CurrentModel % Constants, 'Water Density', Found )
-  IF (.NOT. Found) CALL FATAL(SolverName, 'Water Density not found in Constants')
+  IF (.NOT. Found) CALL FATAL(SolverName, &
+       'Water Density not found in Constants; should be defined in the Constants section of the sif file')
   Lf   = GetConstReal( CurrentModel % Constants, 'Latent Heat SI', Found )
-  IF (.NOT. Found) CALL FATAL(SolverName, 'Latent Heat SI not found in Constants')
+  IF (.NOT. Found) CALL FATAL(SolverName, &
+       'Latent Heat SI not found in Constants; should be defined in the Constants section of the sif file')
   SWCp = GetConstReal( CurrentModel % Constants, 'SW Cp', Found )
-  IF (.NOT. Found) CALL FATAL(SolverName, 'SW Cp not found in Constants')
-
+  IF (.NOT. Found) CALL FATAL(SolverName, &
+       'SW Cp not found in Constants; should be defined in the Constants section of the sif file')
+  seconds_per_year = GetConstReal( CurrentModel % Constants, 'seconds_per_year', Found )
+  IF (.NOT. Found) CALL FATAL(SolverName, &
+       'seconds_per_year not found in Constants; should be defined in the Constants section of the sif file')
   !----------------------------------------------------------------------------
   ! Get Elmer variables
   !----------------------------------------------------------------------------
@@ -203,12 +204,12 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
                         Solver % Mesh % NumberOfBoundaryElements) )
      FluxValues = 0.0_dp
      FluxPerm   = 0
-     DO t = 1, Solver % NumberOfActiveElements
-        Element => GetActiveElement(t)
-        FluxPerm(Element % ElementIndex) = t
+     DO element_id = 1, Solver % NumberOfActiveElements
+        Element => GetActiveElement(element_id)
+        FluxPerm(Element % ElementIndex) = element_id
      END DO
      CALL VariableAdd( Solver % Mesh % Variables, Solver % Mesh, Solver, &
-          TRIM(Solver % Variable % Name) // '_flux', 1, FluxValues, FluxPerm )
+          TRIM(Solver % Variable % Name) // '_flux', 1, FluxValues, FluxPerm)
      meltFlux_var => VariableGet( Solver % Mesh % Variables, &
           TRIM(Solver % Variable % Name) // '_flux' )
   END IF
@@ -232,11 +233,12 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
      END IF
 
      S_far = sal_oce_vals(sal_oce_Perm(ii))
+
      T_freeze = lambda1 * S_far + lambda2 + cc * z_iceBase % Values(z_iceBase % Perm(ii))
+
      T_far = T_oce_vals(T_oce_Perm(ii))
 
-     meltRate = gammaT * (rhoo * SWCp / (rhoi * Lf)) * (T_far - T_freeze) * secondstoyear
-
+     meltRate = gammaT * (rhoo * SWCp / (rhoi * Lf)) * (T_far - T_freeze) *  seconds_per_year
      IF (wct_sc) THEN
         wct         = z_iceBase % Values(z_iceBase % Perm(ii)) &
                     - z_bedrock % Values(z_bedrock % Perm(ii))
@@ -252,12 +254,13 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
   !----------------------------------------------------------------------------
   ! Loop over active elements to integrate nodal melt rate -> element flux
   !----------------------------------------------------------------------------
-  DO t = 1, Solver % NumberOfActiveElements
-     Element => GetActiveElement(t)
+  DO element_id = 1, Solver % NumberOfActiveElements
+     Element => GetActiveElement(element_id)
      n_el = GetElementNOFNodes(Element)
      CALL GetElementNodes(ElementNodes)
      IntegStuff = GaussPoints(Element)
 
+     ! This uses the nodal melt rate to compute the integrated melt flux for this element via FEM interpolation
      elemFlux = 0.0_dp
      DO jj = 1, IntegStuff % n
         U  = IntegStuff % u(jj)
@@ -279,6 +282,7 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
         elemFlux = elemFlux + Sw * detJ * meltRate_gp
      END DO
 
+     ! checks if the element is active in the flux variable and assigns the integrated flux
      IF (meltFlux_var % Perm(Element % ElementIndex) > 0) THEN
         meltFlux_var % Values(meltFlux_var % Perm(Element % ElementIndex)) = elemFlux
      END IF
