@@ -244,7 +244,7 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
                     - z_bedrock % Values(z_bedrock % Perm(ii))
         meltScaling = TANH(wct / (wct_factor / EXP(1.0_dp)))
      ELSE
-      !   meltScaling = 1.0_dp
+        meltScaling = 1.0_dp
      END IF
 
      Solver % Variable % Values(Solver % Variable % Perm(ii)) = meltRate * meltScaling
