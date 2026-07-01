@@ -47,7 +47,7 @@
 ! *  Required Elmer variables:
 ! *    temp_oce_post : nodal ocean temperature (degC)
 ! *    sal_oce_post  : nodal ocean salinity (PSU)
-! *    H             : ice thickness (m)
+! *    ice thickness             : ice thickness (m)
 ! *
 ! *  Output variables (created automatically):
 ! *    <var>_flux : integrated melt flux per element (m3/yr), element variable
@@ -83,7 +83,7 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
   LOGICAL                :: Transient
 
   ! Elmer variables
-  TYPE(Variable_t), POINTER :: z_iceBase, z_bedrock, groundedMask, T_oce_var, sal_oce_var, H_var
+  TYPE(Variable_t), POINTER :: z_iceBase, z_bedrock, groundedMask, T_oce_var, sal_oce_var, ice_thickness_var
   INTEGER, POINTER          :: T_oce_Perm(:), sal_oce_Perm(:)
   REAL(KIND=dp), POINTER    :: T_oce_vals(:), sal_oce_vals(:)
 
@@ -101,7 +101,7 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
 
   ! Local variables
   TYPE(ValueList_t), POINTER :: SolverParams, Material
-  REAL(KIND=dp) :: T_freeze, T_far, S_far, meltRate, meltScaling, wct, wct_factor, minH
+  REAL(KIND=dp) :: T_freeze, T_far, S_far, meltRate, meltScaling, wct, wct_factor, min_ice_thickness
   LOGICAL       :: found, T_oce_found, sal_oce_found
   INTEGER       :: ii, ii_mat, nZeroedNodes, ierr
 
@@ -148,7 +148,7 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
   Found = .FALSE.
   DO ii_mat = 1, CurrentModel % NumberOfMaterials
      Material => CurrentModel % Materials(ii_mat) % Values
-     minH = GetConstReal(Material, 'Min H', Found)
+     min_ice_thickness = GetConstReal(Material, 'Min H', Found)
      IF (Found) EXIT
   END DO
   IF (.NOT. Found) CALL FATAL(SolverName, 'Min H not found in any Material section')
@@ -182,25 +182,27 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
 
   T_oce_var   => VariableGet( Solver % Mesh % Variables, 'temp_oce_post' )
   T_oce_found = ASSOCIATED(T_oce_var)
-  IF (.NOT. ASSOCIATED(T_oce_var)) CALL FATAL(SolverName, 'Variable temp_oce_post not found')
+  IF (.NOT. ASSOCIATED(T_oce_var)) CALL FATAL(SolverName, &
+      'Variable temp_oce_post not found. Please make sure it is a defined variable in your .sif')
   T_oce_vals => T_oce_var % Values
   T_oce_Perm => T_oce_var % Perm
-  CALL INFO(SolverName, 'Variable temp_oce found; using nodal ocean temperatures', Level=3)
+  CALL INFO(SolverName, 'Variable temp_oce_post found; using nodal ocean temperatures', Level=3)
 
   sal_oce_var   => VariableGet( Solver % Mesh % Variables, 'sal_oce_post' )
   sal_oce_found = ASSOCIATED(sal_oce_var)
-  IF (.NOT. ASSOCIATED(sal_oce_var)) CALL FATAL(SolverName, 'Variable sal_oce_post not found')
+  IF (.NOT. ASSOCIATED(sal_oce_var)) CALL FATAL(SolverName, &
+      'Variable sal_oce_post not found. Please make sure it is a defined variable in your .sif')
   sal_oce_vals => sal_oce_var % Values
   sal_oce_Perm => sal_oce_var % Perm
-  CALL INFO(SolverName, 'Variable sal_oce found; using nodal ocean salinity', Level=3)
+  CALL INFO(SolverName, 'Variable sal_oce_pst found; using nodal ocean salinity', Level=3)
 
   IF (wct_sc) THEN
      z_bedrock => VariableGet( Solver % Mesh % Variables, TRIM(bedrockName) )
      IF (.NOT. ASSOCIATED(z_bedrock)) CALL FATAL(SolverName, 'Failed to find bedrock variable')
   END IF
 
-  H_var => VariableGet(Solver % Mesh % Variables, 'H')
-  IF (.NOT. ASSOCIATED(H_var)) CALL FATAL(SolverName, 'Failed to find ice thickness variable H')
+  ice_thickness_var => VariableGet(Solver % Mesh % Variables, 'H')
+  IF (.NOT. ASSOCIATED(ice_thickness_var)) CALL FATAL(SolverName, 'Failed to find ice thickness variable H')
 
 
   !----------------------------------------------------------------------------
@@ -243,7 +245,7 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
         IF (.NOT. glMelt) CYCLE
      END IF
 
-     IF (H_var % Values(H_var % Perm(ii)) .LE. minH) THEN
+     IF (ice_thickness_var % Values(ice_thickness_var % Perm(ii)) .LE. min_ice_thickness) THEN
          Solver % Variable % Values(Solver % Variable % Perm(ii)) = 0.0_dp
          nZeroedNodes = nZeroedNodes + 1
          CYCLE
