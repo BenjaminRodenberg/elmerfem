@@ -180,23 +180,27 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
   groundedMask => VariableGet( Solver % Mesh % Variables, TRIM(groundedMaskName) )
   IF (.NOT. ASSOCIATED(groundedMask)) CALL FATAL(SolverName, 'Failed to find grounded mask variable')
 
-  T_oce_var   => VariableGet( Solver % Mesh % Variables, 'temp_oce_post' )
+  T_oce_var   => VariableGet( Solver % Mesh % Variables, 'temp_oce' )
   T_oce_found = ASSOCIATED(T_oce_var)
   IF (.NOT. ASSOCIATED(T_oce_var)) CALL FATAL(SolverName, &
-      'Variable temp_oce_post not found. Please make sure it is a defined variable in your .sif')
+      'Variable temp_oce not found. Please make sure it is a defined variable in your .sif')
   T_oce_vals => T_oce_var % Values
   T_oce_Perm => T_oce_var % Perm
 
-  sal_oce_var   => VariableGet( Solver % Mesh % Variables, 'sal_oce_post' )
+  sal_oce_var   => VariableGet( Solver % Mesh % Variables, 'sal_oce' )
   sal_oce_found = ASSOCIATED(sal_oce_var)
   IF (.NOT. ASSOCIATED(sal_oce_var)) CALL FATAL(SolverName, &
-      'Variable sal_oce_post not found. Please make sure it is a defined variable in your .sif')
+      'Variable sal_oce not found. Please make sure it is a defined variable in your .sif')
   sal_oce_vals => sal_oce_var % Values
   sal_oce_Perm => sal_oce_var % Perm
 
   IF (wct_sc) THEN
-     z_bedrock => VariableGet( Solver % Mesh % Variables, TRIM(bedrockName) )
-     IF (.NOT. ASSOCIATED(z_bedrock)) CALL FATAL(SolverName, 'Failed to find bedrock variable')
+    z_bedrock => VariableGet( Solver % Mesh % Variables, TRIM(bedrockName) )
+    IF (.NOT. ASSOCIATED(z_bedrock)) THEN
+      CALL FATAL(SolverName, &
+        'Failed to find bedrock variable' &
+      )
+    END IF
   END IF
 
   ice_thickness_var => VariableGet(Solver % Mesh % Variables, 'H')
@@ -272,7 +276,12 @@ SUBROUTINE SubShelfMeltLinearTF (Model, Solver, dt, Transient)
   END DO
   IF (ParEnv % PEs > 1) CALL MPI_Allreduce(MPI_IN_PLACE, nZeroedNodes, 1, &
        MPI_INTEGER, MPI_SUM, ELMER_COMM_WORLD, ierr)
-  IF (ParEnv % MyPE == 0) PRINT *, 'SubShelfMeltLinearTF: nodes set to zero due to >Min H<:', nZeroedNodes
+  IF (ParEnv % MyPE == 0) THEN
+   CALL INFO(SolverName, &
+     'SubShelfMeltLinearTF: nodes set to zero due to >Min H<:' // &
+      nZeroedNodes &
+     )
+  END IF
 
   !----------------------------------------------------------------------------
   ! Loop over active elements to integrate nodal melt rate -> element flux
