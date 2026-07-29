@@ -502,12 +502,12 @@ MODULE elmer_icon_coupling
 
   INTEGER :: liquid_ice_sheet_flux_field_id = -1
   CHARACTER(LEN=*), PARAMETER :: liquid_ice_sheet_flux_field_name = "liquid_ice_sheet_flux"
-  INTEGER :: liquid_ice_sheet_flux_collection_size = 1
+  INTEGER, PARAMETER :: liquid_ice_sheet_flux_collection_size = 1
   DOUBLE PRECISION, PUBLIC, ALLOCATABLE :: liquid_ice_sheet_flux_field(:,:)
 
   INTEGER :: solid_ice_sheet_flux_field_id = -1
   CHARACTER(LEN=*), PARAMETER :: solid_ice_sheet_flux_field_name = "solid_ice_sheet_flux"
-  INTEGER :: solid_ice_sheet_flux_collection_size = 1
+  INTEGER, PARAMETER :: solid_ice_sheet_flux_collection_size = 1
   DOUBLE PRECISION, PUBLIC, ALLOCATABLE :: solid_ice_sheet_flux_field(:,:)
 
 CONTAINS
